@@ -1,0 +1,35 @@
+[Unit]
+Description=CADS Pro - Camouflage Ads Backend
+After=network.target
+
+[Service]
+Type=simple
+User=cads
+Group=cads
+WorkingDirectory=/opt/cads-pro
+Environment="PATH=/opt/cads-pro/venv/bin:/usr/bin:/bin"
+Environment="LOG_LEVEL=info"
+Environment="CADS_DATA_DIR=/var/lib/cads-pro"
+Environment="PYTHONDONTWRITEBYTECODE=1"
+EnvironmentFile=/opt/cads-pro/.env
+# Recusa configuração ausente ou inválida sem imprimir a credencial.
+ExecStartPre=/opt/cads-pro/venv/bin/python -c "import os,sys; k=os.environ.get('ADMIN_API_KEY',''); sys.exit(0 if len(k)>=32 and not any(c.isspace() for c in k) and os.environ.get('LOG_LEVEL','info') in ('critical','error','warning','info','debug') else 'Confira ADMIN_API_KEY (minimo 32 caracteres, sem espacos) e LOG_LEVEL (critical/error/warning/info/debug)')"
+# Um worker mantém os limites em memória consistentes entre requisições.
+ExecStart=/opt/cads-pro/venv/bin/python -m uvicorn server.main:app --host 127.0.0.1 --port 8888 --workers 1 --no-server-header --no-proxy-headers --log-level ${LOG_LEVEL}
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=45
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cads-pro
+StateDirectory=cads-pro
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/cads-pro
+
+[Install]
+WantedBy=multi-user.target

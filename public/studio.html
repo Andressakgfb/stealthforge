@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Estúdio Criativo IA · StealthForge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="/stealthforge-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/portal.css?v=1"><link rel="stylesheet" href="/studio-theme.css?v=1">
+  <script src="/vendor/lucide.min.js" defer></script><script src="/session.js?v=1" defer></script><script src="/studio.js?v=2" defer></script>
+</head>
+<body>
+  <header class="portal-header"><div class="portal-bar">
+    <a class="portal-brand" href="/"><img src="/stealthforge-mark.svg" width="46" height="46" alt=""><span>STEALTHFORGE</span></a>
+    <nav aria-label="Navegação principal"><a href="/"><i data-lucide="house"></i>Painel</a><a href="/studio.html" aria-current="page"><i data-lucide="sparkles"></i>Estúdio IA</a><a href="/#tools"><i data-lucide="wand-sparkles"></i>Ferramentas</a></nav>
+    <div id="account-tools" class="account-tools"></div>
+  </div></header>
+  <main class="studio-shell">
+    <a class="back-link" href="/"><i data-lucide="arrow-left"></i>Voltar ao painel</a>
+    <div class="studio-intro"><div class="intro-icon"><i data-lucide="sparkles"></i></div><div><h1>Estúdio Criativo IA</h1><p>Dê vida às suas imagens. Você escolhe a cena, a IA cria o movimento.</p></div></div>
+    <p class="intro-note">Envie uma foto, descreva sua direção criativa e acompanhe o resultado. Revise os detalhes do vídeo antes de publicar.</p>
+    <div class="connection" id="connection"><span class="dot"></span><span id="connection-text">Verificando conexão com a IA…</span></div>
+    <div class="workspace">
+      <form class="studio-panel" id="studio-form" autocomplete="off">
+        <div class="step-heading"><span class="number">01</span><div><h2>Comece com a sua imagem</h2><p>Escolha uma foto para criar um novo vídeo.</p></div></div>
+        <div class="upload" id="upload-zone">
+          <i id="upload-icon" data-lucide="image-plus"></i><img id="source-image" alt="Imagem selecionada para a geração" hidden>
+          <button id="pick-photo" type="button">Escolher imagem</button><p id="upload-hint">Ou arraste e solte aqui</p>
+          <span class="file-label" id="file-label">JPG, PNG ou WEBP · até 10 MB</span><input type="file" id="photo" accept="image/jpeg,image/png,image/webp" hidden>
+        </div>
+        <div class="field"><label for="product-name">Nome do produto ou projeto <span class="optional">(opcional)</span></label><input id="product-name" name="product_name" maxlength="120" placeholder="Ex.: Perfume Noir 100 ml" autocomplete="off"></div>
+        <div class="divider"></div>
+        <div class="step-heading"><span class="number">02</span><div><h2>Defina a direção criativa</h2><p>Descreva a cena, a luz e o movimento que você imagina.</p></div></div>
+        <div class="presets" aria-label="Sugestões de cena">
+          <button type="button" class="preset active" data-scene="studio" aria-pressed="true">Estúdio</button><button type="button" class="preset" data-scene="lifestyle" aria-pressed="false">No dia a dia</button><button type="button" class="preset" data-scene="detail" aria-pressed="false">Foco nos detalhes</button><button type="button" class="preset" data-scene="cinematic" aria-pressed="false">Cinematográfico</button>
+        </div>
+        <label class="sr-only" for="scene">Descrição da cena</label><textarea id="scene" name="scene" required minlength="10" maxlength="500" aria-describedby="scene-count">Apresente o produto em um estúdio com fundo neutro, iluminação suave e movimento lento de câmera. Valorize os detalhes e mantenha o produto fiel à foto. Sem textos ou narração.</textarea><div class="counter" id="scene-count" aria-live="polite">0/500</div>
+        <div class="divider"></div>
+        <div class="step-heading"><span class="number">03</span><div><h2>Configurações de geração</h2><p>Escolha o formato e o serviço de IA para esta criação.</p></div></div>
+        <div class="row"><div><label for="aspect-ratio">Formato</label><select id="aspect-ratio" name="aspect_ratio"><option value="9:16">Vertical · Reels e TikTok</option><option value="16:9">Horizontal · YouTube e site</option></select></div><div><label for="quality">Qualidade</label><select id="quality" disabled aria-describedby="quality-hint"><option>Conforme o provedor</option></select></div></div>
+        <p class="notice" id="quality-hint">A qualidade é definida pelo modelo do provedor selecionado.</p>
+        <div class="field"><label for="provider">Provedor de IA</label><select id="provider" name="provider" aria-describedby="provider-hint"><option value="deapi_ltx">Carregando provedores…</option></select><p class="notice" id="provider-hint">Consultando o servidor…</p></div>
+        <div class="divider"></div>
+        <details id="key-settings" class="key-settings" open><summary><span class="number">04</span>Chave de API do provedor</summary>
+          <div class="key-field"><label class="sr-only" for="api-key">Chave da API do provedor</label><input id="api-key" name="provider_credential" type="password" autocomplete="new-password" spellcheck="false" maxlength="512" placeholder="Cole a chave do provedor escolhido"><button id="toggle-key" type="button" aria-label="Mostrar chave" aria-pressed="false"><i data-lucide="eye"></i></button></div>
+          <p class="notice"><i data-lucide="lock-keyhole"></i>A chave não é salva no navegador nem no StealthForge. Ela é enviada ao provedor para gerar o vídeo.</p>
+          <details class="key-guide"><summary>Como configurar minha chave?</summary><p>Escolha um provedor acima, crie uma chave na conta desse mesmo serviço e cole no campo. Confira preços e saldo antes de gerar.</p><a href="https://deapi.ai" target="_blank" rel="noopener noreferrer">deAPI ↗</a><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio ↗</a><a href="https://fal.ai/dashboard/keys" target="_blank" rel="noopener noreferrer">fal.ai ↗</a></details>
+        </details>
+        <button class="primary" type="submit" id="generate" disabled><span aria-hidden="true">✦</span>Gerar vídeo com IA<i data-lucide="arrow-right"></i></button>
+        <p class="notice">A foto e a descrição serão enviadas ao serviço escolhido. A geração pode consumir créditos na sua conta do provedor.</p>
+      </form>
+      <div class="preview-column">
+        <section class="studio-panel screen-panel" aria-labelledby="preview-title"><div class="screen-head"><h2 id="preview-title"><i data-lucide="eye"></i>Prévia do seu criativo</h2><span class="pill" id="format-label">9:16</span></div>
+          <div class="stage"><div class="preview-frame" id="preview-frame"><div class="placeholder" id="placeholder"><i data-lucide="clapperboard"></i><strong>Sua próxima criação começa aqui.</strong><p>A imagem enviada aparece nesta área.<br>O vídeo será exibido após a geração.</p></div><img id="stage-image" alt="Imagem de referência para o vídeo" hidden><video id="result-video" controls playsinline preload="metadata" hidden></video></div><div class="stage-label" id="stage-label">Prévia da imagem</div></div>
+          <div class="result-footer"><p class="status" id="status" role="status" aria-live="polite">Selecione uma imagem para começar.</p><a id="download" class="download" hidden><i data-lucide="download"></i>Baixar vídeo MP4</a></div>
+        </section>
+        <section class="studio-panel tips-panel"><h2><i data-lucide="lightbulb"></i>Dicas para melhores resultados</h2><div class="tips"><div><i data-lucide="image"></i><h3>Comece com uma boa foto</h3><p>Use uma imagem nítida, com boa luz e os detalhes que deseja preservar.</p></div><div><i data-lucide="scan-line"></i><h3>Descreva a cena</h3><p>Conte como devem ser a iluminação, o ambiente e o movimento da câmera.</p></div><div><i data-lucide="rectangle-vertical"></i><h3>Escolha o formato ideal</h3><p>Vertical para Reels e Stories; horizontal para YouTube e apresentações.</p></div></div></section>
+        <aside class="studio-panel provider-note"><i data-lucide="key-round"></i><div><h2>Você usa a sua chave de IA</h2><p>Acompanhe o saldo e os custos na conta do provedor. Nenhuma assinatura de IA está incluída no acesso ao StealthForge.</p></div></aside>
+      </div>
+    </div>
+    <footer>STEALTHFORGE · ESTÚDIO CRIATIVO IA</footer>
+  </main>
+</body></html>

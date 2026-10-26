@@ -1,0 +1,78 @@
+CADS PRO — CONFIGURAÇÃO DAS CORREÇÕES DE SEGURANÇA
+
+ADMIN_API_KEY
+Variável obrigatória para as três operações administrativas:
+POST /api/auth/create-key
+POST /api/domain/rotate
+GET /api/export/google-sheets
+
+Sem ADMIN_API_KEY configurada, essas operações ficam bloqueadas (401).
+Nenhuma chave administrativa padrão é criada. Chaves de plano no banco não
+substituem a ADMIN_API_KEY. A geração automática da antiga chave fixa foi removida;
+os registros preexistentes no banco foram preservados.
+
+Defina uma chave longa e aleatória, de preferência de um gerenciador de senhas.
+No PowerShell que vai iniciar o servidor, pode digitá-la sem eco usando:
+$adminSecret = Read-Host 'Chave administrativa' -AsSecureString
+$env:ADMIN_API_KEY = [System.Net.NetworkCredential]::new('', $adminSecret).Password
+
+Depois execute, na pasta do aplicativo:
+python -m uvicorn server.main:app --host 127.0.0.1 --port 8888 --reload --no-server-header --no-proxy-headers
+
+A variável deve estar no ambiente do processo que inicia o servidor. Não é
+necessário gravar a chave em um arquivo. Não a envie por chat, argumentos de
+linha de comando, URLs ou logs. Para remover da sessão:
+Remove-Item Env:ADMIN_API_KEY
+
+Na interface, use o campo Chave administrativa acima das ferramentas adicionais.
+O campo usa senha mascarada e não grava em localStorage, sessionStorage ou cookies.
+A chave é enviada por header Authorization: Bearer. X-Admin-Key também é aceito.
+Não use a chave de um provedor de IA como chave administrativa.
+
+LIMITES OPCIONAIS
+RATE_LIMIT_PUBLIC=60       requisições GET/HEAD por minuto e IP nas rotas /api/*
+RATE_LIMIT_PROCESSING=10   outras requisições /api/* por minuto e IP
+RATE_LIMIT_ADMIN=5         requisições às três rotas administrativas por minuto e IP
+
+Os valores são inteiros positivos. As rotas de cada categoria compartilham
+um limite por IP. Excesso retorna 429 e Retry-After, em segundos. Usa janela
+deslizante de 60 segundos e armazenamento em memória, protegido contra concorrência.
+Não há dependência de Redis. Reiniciar o processo zera os contadores.
+Em vários workers ou servidores, substituir por armazenamento compartilhado antes
+de usar esses limites como controle global.
+
+HEADERS E NAVEGAÇÃO
+Todas as respostas recebem CSP, X-Frame-Options: DENY, nosniff, HSTS,
+Referrer-Policy e Permissions-Policy, incluindo 401, 429, 404 e 500.
+O estúdio abre como página do mesmo aplicativo, com volta ao painel; não usa
+iframe, pois DENY e frame-ancestors 'none' impedem incorporação até na mesma origem.
+Lucide 1.61.0 e sua licença estão em public/vendor; o JS não depende mais de unpkg.
+Google Fonts e gstatic são as exceções explícitas para estilos e fontes externas.
+Scripts e estilos inline foram mantidos conforme o escopo pedido. A CSP não
+substitui a validação e o escape de dados.
+
+Os parâmetros --no-server-header e --no-proxy-headers são necessários no Uvicorn.
+O primeiro impede a identificação padrão duplicada do servidor. O segundo evita
+que X-Forwarded-For enviado diretamente ao processo altere o IP usado no limite.
+O atalho INICIAR_CADS_PRO.bat foi atualizado com ambos.
+Se adicionar um proxy reverso, configure a confiança só para os IPs desse proxy;
+não habilite confiança universal em cabeçalhos encaminhados.
+
+HSTS é enviado como solicitado, mas não instala HTTPS. A instalação atual
+continua em HTTP e restrita a 127.0.0.1. Antes de disponibilizar acesso remoto,
+configure HTTPS. Apenas as três rotas listadas receberam autenticação neste escopo.
+
+LOGS
+Tentativas de criação de chave registram IP, data/hora UTC, sucesso/falha e status
+no logger uvicorn.error (terminal ou log configurado do servidor). Recusas por
+autenticação ou limite e erros de validação também são registrados. Tokens não
+são incluídos. Garanta retenção adequada dos logs na implantação.
+
+TESTES
+python -m unittest discover -s tests -v
+node tests/test_dashboard.js
+node --check public/studio.js
+python -m py_compile server/main.py server/security.py server/product_video.py
+
+Os testes administrativos usam chave fictícia e banco temporário. Não geram
+chaves de teste no banco real, não rotacionam domínios reais e não consomem créditos.

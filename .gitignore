@@ -1,0 +1,39 @@
+# Variáveis de ambiente e credenciais privadas.
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+secrets/
+
+# Dados locais e ambientes, sem excluir os exemplos versionáveis.
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.db
+*.db-*
+processed/
+*.log
+
+# Contas, sessoes e arquivos privados dos clientes.
+*.sqlite3
+*.sqlite3-*
+server/customers/
+
+# Segredos e dados operacionais nunca devem ir para o repositorio.
+.env.*
+!.env.example
+*.p12
+*.pfx
+*.sqlite
+*.sqlite-*
+*.db-journal
+*.bak
+backups/
+uploads/
+
+# Midias locais usadas em verificacoes manuais.
+/fast_pad.mp4
+/test_10min.mp4
+/test_white.jpg

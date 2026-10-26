@@ -1,0 +1,1842 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StealthForge · Painel de criação</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="/vendor/lucide.min.js"></script>
+
+  <style>
+    :root {
+      /* StealthForge: azul eletrico sobre superficies escuras. */
+      --bg: #04090f;
+      --bg-elevated: #0b1520;
+      --card-bg: #0b141e;
+      --card-border: rgba(119, 178, 218, 0.25);
+      --card-hover-border: rgba(47, 183, 255, 0.75);
+      --primary-white: #F5F5F5;
+      --text-muted: #a9b8ca;
+
+      /* Acoes e estados */
+      --gold: #38baff;
+      --gold-dim: rgba(56, 186, 255, 0.1);
+      --acid-green: #71e9a3;
+      --danger: #FF3333;
+
+      /* Nomes preservados para os formularios existentes. */
+      --emerald: var(--acid-green);
+      --blue: var(--gold);
+      --purple: var(--gold);
+      --pink: var(--gold);
+      --amber: var(--gold);
+      --red: var(--danger);
+      --cyan: var(--gold);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--primary-white);
+      font-family: 'IBM Plex Sans', sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      padding-bottom: 60px;
+    }
+
+    h1, h2, h3, .stat-value, .modal-title, .brand-group h1, .user-greeting h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      letter-spacing: -0.02em;
+    }
+
+    .container {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    @media (min-width: 768px) {
+      header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo-box {
+      width: 58px;
+      height: 58px;
+      border-radius: 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(56, 186, 255, 0.15);
+    }
+
+    .logo-box svg {
+      color: var(--gold);
+      filter: drop-shadow(0 0 6px rgba(56, 186, 255, 0.4));
+    }
+
+    .user-greeting h1 {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .user-greeting p {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-top: 2px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      border: 1px solid var(--card-border);
+      background: rgba(18, 24, 38, 0.4);
+      backdrop-filter: blur(8px);
+      font-size: 13px;
+      font-weight: 500;
+      color: #E2E8F0;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--emerald);
+      box-shadow: 0 0 10px var(--emerald);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .btn-new {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background-color: #FFF;
+      color: #000;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 10px 22px;
+      border-radius: 9999px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 0 20px rgba(255,255,255,0.25);
+    }
+
+    .btn-new:hover {
+      transform: scale(1.03);
+      box-shadow: 0 0 25px rgba(255,255,255,0.4);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    @media (min-width: 768px) {
+      .stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .stat-card {
+      padding: 22px 24px;
+      border-radius: 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(12px);
+      transition: all 0.2s ease;
+    }
+
+    .stat-card:hover {
+      background: rgba(24, 32, 50, 0.7);
+      border-color: var(--card-hover-border);
+    }
+
+    .stat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .stat-icon-wrap {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .stat-badge-green {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--emerald);
+      margin-left: 8px;
+    }
+
+    .progress-bar-bg {
+      height: 6px;
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #FFFFFF, rgba(255,255,255,0.4));
+      border-radius: 999px;
+      box-shadow: 0 0 10px rgba(255,255,255,0.5);
+    }
+
+    /* Main Grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 32px;
+    }
+    @media (min-width: 1024px) {
+      .main-grid {
+        grid-template-columns: 1.6fr 1fr;
+      }
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 14px;
+    }
+
+    .tools-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @media (min-width: 540px) {
+      .tools-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .tool-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+      border-radius: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      text-decoration: none;
+      color: #FFF;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .tool-card:hover {
+      background: #111;
+      border-color: var(--card-hover-border);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(56, 186, 255, 0.08);
+    }
+
+    .tool-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: transform 0.2s;
+    }
+
+    .tool-card:hover .tool-icon {
+      transform: scale(1.08);
+    }
+
+    .tool-info h3 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .tool-info p {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.2;
+    }
+
+    .chevron-arrow {
+      margin-left: auto;
+      color: rgba(255,255,255,0.2);
+      transition: all 0.2s;
+    }
+
+    .tool-card:hover .chevron-arrow {
+      color: #FFF;
+      transform: translateX(3px);
+    }
+
+    /* Activity Feed */
+    .activity-box {
+      border-radius: 18px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+    }
+
+    .activity-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      text-decoration: none;
+      color: inherit;
+    }
+
+    a.activity-item {
+      cursor: pointer;
+    }
+
+    a.activity-item:hover {
+      background: rgba(37, 211, 102, 0.08);
+    }
+
+    a.activity-item:hover .activity-download {
+      color: #25D366;
+    }
+
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-download {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(37, 211, 102, 0.12);
+      color: #25D366;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .activity-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+    }
+
+    .activity-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .activity-title {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .activity-tag {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .activity-time {
+      font-size: 11px;
+      color: rgba(255,255,255,0.25);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    /* Modal / Action Dialog */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      z-index: 1000;
+      padding: 24px 16px 48px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
+    }
+
+    .modal-content {
+      background: #0F141F;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 24px;
+      width: 100%;
+      max-width: 640px;
+      padding: 30px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.8);
+      position: relative;
+      margin: auto;
+    }
+
+    body.modal-open {
+      overflow: hidden !important;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .close-modal {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 8px;
+    }
+
+    .close-modal:hover {
+      color: #FFF;
+      background: rgba(255,255,255,0.1);
+    }
+
+    /* Level Selector (Básica / Normal / Agressiva) */
+    .level-selector {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      background: rgba(255,255,255,0.03);
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .level-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .level-btn.active {
+      background: var(--gold);
+      color: #000;
+      box-shadow: 0 2px 10px rgba(56, 186, 255, 0.3);
+    }
+
+    .dropzone {
+      border: 2px dashed rgba(56, 186, 255, 0.2);
+      border-radius: 12px;
+      padding: 34px 20px;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(56, 186, 255, 0.02);
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dropzone:hover {
+      border-color: var(--gold);
+      background: rgba(56, 186, 255, 0.05);
+    }
+
+    .dropzone p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .btn-action {
+      width: 100%;
+      background: var(--gold);
+      color: #000;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      margin-top: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(56, 186, 255, 0.15);
+    }
+
+    .btn-action:hover {
+      background: #78d3ff;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(56, 186, 255, 0.25);
+    }
+
+    .input-textarea {
+      width: 100%;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      color: #FFF;
+      padding: 14px;
+      font-family: inherit;
+      font-size: 13px;
+      resize: vertical;
+      min-height: 120px;
+    }
+
+    .input-textarea:focus {
+      outline: none;
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px rgba(56, 186, 255, 0.1);
+    }
+
+    .result-card {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: none;
+    }
+  </style>
+  <link rel="stylesheet" href="/portal.css?v=1">
+  <script src="/session.js?v=1" defer></script>
+  <link rel="stylesheet" href="/stealthforge.css?v=20261026-2">
+  <link rel="icon" type="image/svg+xml" href="/stealthforge-mark.svg">
+  <meta name="theme-color" content="#04090f">
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <a class="brand-group" href="/" aria-label="StealthForge — pagina inicial">
+        <img class="brand-mark" src="/stealthforge-mark.svg" width="76" height="76" alt="">
+        <span class="brand-name">STEALTHFORGE</span>
+      </a>
+      <div class="header-actions">
+        <div class="status-badge">
+          <span class="pulse-dot"></span>
+          Servidor online
+        </div>
+        <button class="btn-new" onclick="openModal('image')">
+          <i data-lucide="plus" style="width: 18px; height: 18px;"></i>
+          Nova camuflagem
+        </button>
+      </div>
+    </header>
+    <div class="user-greeting">
+      <h1>Bem-vindo ao Painel</h1>
+      <p>Prepare imagens, vídeos, textos e páginas para revisão e publicação.</p>
+    </div>
+
+    <!-- Top Metrics -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Arquivos salvos hoje</span>
+          <div class="stat-icon-wrap" style="background: rgba(16, 185, 129, 0.1); color: var(--emerald);">
+            <i data-lucide="trending-up" style="width: 18px; height: 18px;"></i>
+          </div>
+        </div>
+        <div style="display: flex; align-items: baseline;">
+          <span class="stat-value" id="stat-today">—</span>
+          
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Arquivos salvos</span>
+          <div class="stat-icon-wrap" style="background: rgba(59, 130, 246, 0.1); color: var(--blue);">
+            <i data-lucide="files" style="width: 18px; height: 18px;"></i>
+          </div>
+        </div>
+        <div style="display: flex; align-items: baseline;">
+          <span class="stat-value" id="stat-protected">—</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Arquivos do mês</span>
+          <div class="stat-icon-wrap" style="background: rgba(139, 92, 246, 0.1); color: var(--purple);">
+            <i data-lucide="database" style="width: 18px; height: 18px;"></i>
+          </div>
+        </div>
+        <div class="stat-month">
+          <span>Salvos e disponíveis</span>
+          <span class="stat-value" id="stat-plan-text">—</span>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Main Content -->
+    <div class="main-grid">
+      <!-- Left: Tools -->
+      <section>
+        <h2 id="tools" class="section-title">Central de Ferramentas</h2>
+        <div class="tools-grid">
+          <button type="button" class="tool-card" onclick="openModal('studio')">
+            <div class="tool-icon" style="color:var(--gold);"><i data-lucide="sparkles"></i></div>
+            <div class="tool-info"><h3>Estúdio Criativo IA</h3><p>Dê vida às suas imagens.</p></div>
+            <i data-lucide="chevron-right" class="chevron-arrow"></i>
+          </button>
+          
+          <button type="button" class="tool-card" onclick="openModal('video')">
+            <div class="tool-icon" style="color: var(--blue);">
+              <i data-lucide="video"></i>
+            </div>
+            <div class="tool-info">
+              <h3>Preparar vídeo</h3>
+              <p>Capa, duração e exportação MP4</p>
+            </div>
+            <i data-lucide="chevron-right" class="chevron-arrow"></i>
+          </button>
+
+          <button type="button" class="tool-card" onclick="openModal('image')">
+            <div class="tool-icon" style="color: var(--gold);">
+              <i data-lucide="image"></i>
+            </div>
+            <div class="tool-info">
+              <h3>Camuflador de imagem</h3>
+              <p>Uma versão única por anúncio</p>
+            </div>
+            <i data-lucide="chevron-right" class="chevron-arrow"></i>
+          </button>
+
+          <button type="button" class="tool-card" onclick="openModal('cloner')">
+            <div class="tool-icon" style="color: var(--gold);">
+              <i data-lucide="copy"></i>
+            </div>
+            <div class="tool-info">
+              <h3>Clonador de página</h3>
+              <p>Baixe o HTML; publicação manual</p>
+            </div>
+            <i data-lucide="chevron-right" class="chevron-arrow"></i>
+          </button>
+
+          <button type="button" class="tool-card" onclick="openModal('text')">
+            <div class="tool-icon" style="color: var(--gold);">
+              <i data-lucide="type"></i>
+            </div>
+            <div class="tool-info">
+              <h3>Camuflador de texto</h3>
+              <p>Transforme texto em um card visual</p>
+            </div>
+            <i data-lucide="chevron-right" class="chevron-arrow"></i>
+          </button>
+
+          <button type="button" class="tool-card" onclick="openModal('metadata')">
+            <div class="tool-icon" style="color: var(--blue);">
+              <i data-lucide="settings"></i>
+            </div>
+            <div class="tool-info">
+              <h3>Limpar metadados</h3>
+              <p>Limpe metadados de imagens e vídeos</p>
+            </div>
+            <i data-lucide="chevron-right" class="chevron-arrow"></i>
+          </button>
+
+          <button type="button" class="tool-card" onclick="openModal('compliance')">
+            <div class="tool-icon" style="color: var(--blue);">
+              <i data-lucide="shield-check"></i>
+            </div>
+            <div class="tool-info">
+              <h3>Revisão de termos do anúncio</h3>
+              <p>Lista local de termos; sem garantia de aprovação</p>
+            </div>
+            <i data-lucide="chevron-right" class="chevron-arrow"></i>
+          </button>
+
+          <button type="button" class="tool-card" onclick="openModal('cloaker')">
+            <div class="tool-icon" style="color: var(--danger);">
+              <i data-lucide="eye-off"></i>
+            </div>
+            <div class="tool-info">
+              <h3>Cloaker Meta & TikTok</h3>
+              <p>Filtre robôs e mande lead pra oferta</p>
+            </div>
+            <i data-lucide="chevron-right" class="chevron-arrow"></i>
+          </button>
+          <button type="button" class="tool-card" onclick="openModal('script')">
+            <div class="tool-icon" style="color: var(--gold);">
+              <i data-lucide="mic"></i>
+            </div>
+            <div class="tool-info">
+              <h3>Modelos de roteiro</h3>
+              <p>Sugestões para revisar e adaptar</p>
+            </div>
+            <i data-lucide="chevron-right" class="chevron-arrow"></i>
+          </button>
+
+        </div>
+      </section>
+
+      <!-- Right: Recent Activity -->
+      <section>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+          <h2 class="section-title" style="margin-bottom: 0;">Atividade recente</h2>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <button onclick="clearAllActivity()" style="background: rgba(255,51,51,0.15); border: 1px solid rgba(255,51,51,0.4); color: #FF3333; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px;" title="Limpar os registros sem apagar os arquivos">
+              <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i> Limpar histórico
+            </button>
+            <span style="font-size: 11px; color: var(--text-muted); cursor: pointer;" onclick="loadStats()">Atualizar</span>
+          </div>
+        </div>
+
+        <div class="activity-box" id="activity-list"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Unified Dynamic Modal -->
+  <div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+    <div class="modal-content" id="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Título da Ferramenta</h3>
+        <button class="close-modal" aria-label="Fechar ferramenta" onclick="closeModal()">
+          <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+        </button>
+      </div>
+
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentLevel = 'normal';
+
+    function setLevel(lvl) {
+      currentLevel = lvl;
+      document.querySelectorAll('.level-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById(`btn-lvl-${lvl}`);
+      if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    lucide.createIcons();
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[ch]));
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/stats');
+        if (!res.ok) throw new Error(`Falha ao consultar os dados (${res.status}).`);
+        const data = await res.json();
+        const numeric = (value, fallback = 0) => Number.isFinite(value) ? value : fallback;
+        const processedToday = numeric(data?.processed_today);
+        const protectedFiles = numeric(data?.protected_files);
+        const planUsed = numeric(data?.plan_used);
+        const planLimit = numeric(data?.plan_limit, 5000);
+        document.getElementById('stat-today').innerText = processedToday.toLocaleString('pt-BR');
+        document.getElementById('stat-protected').innerText = protectedFiles.toLocaleString('pt-BR');
+        document.getElementById('stat-plan-text').innerText = planUsed.toLocaleString('pt-BR');
+        const planBar = document.getElementById('stat-plan-bar');
+        if (planBar) planBar.style.width = (planLimit > 0 ? Math.min(100, Math.max(0, Math.round(planUsed / planLimit * 100))) : 0) + '%';
+        
+
+        const list = document.getElementById('activity-list');
+        const activities = Array.isArray(data?.recent_activities) ? data.recent_activities : [];
+        list.innerHTML = activities.filter(act => act && typeof act === 'object').map(act => {
+          const url = act.download_url || (act.filename ? `/api/download/${encodeURIComponent(act.filename)}` : '');
+          const downloadName = act.filename || act.name || 'arquivo';
+          const deleteBtn = act.filename ? `<button onclick="event.preventDefault(); event.stopPropagation(); deleteFile(${escapeHtml(JSON.stringify(act.filename))})" style="background: rgba(255,51,51,0.1); border: 1px solid rgba(255,51,51,0.3); color: var(--danger); padding: 6px; border-radius: 6px; cursor: pointer; margin-left: 8px;" title="Excluir arquivo"><i data-lucide="trash-2" style="width: 14px; height: 14px;"></i></button>` : '';
+          if (url) {
+            return `
+              <div class="activity-item" style="display: flex; align-items: center;">
+                <a href="${escapeHtml(url)}" download="${escapeHtml(downloadName)}" style="flex: 1; display: flex; align-items: center; text-decoration: none; color: inherit;">
+                  <div class="activity-icon">
+                    <i data-lucide="${act.icon || 'file'}"></i>
+                  </div>
+                  <div class="activity-details">
+                    <div class="activity-title">${escapeHtml(act.name)}</div>
+                    <div class="activity-tag">${escapeHtml(act.tag || 'Clique para baixar')}</div>
+                  </div>
+                  <div class="activity-download">
+                    <i data-lucide="download"></i>
+                  </div>
+                </a>
+                ${deleteBtn}
+              </div>
+            `;
+          }
+          return `
+            <div class="activity-item" style="display: flex; align-items: center;">
+              <div style="flex: 1; display: flex; align-items: center;">
+                <div class="activity-icon">
+                  <i data-lucide="${act.icon || 'file'}"></i>
+                </div>
+                <div class="activity-details">
+                  <div class="activity-title">${escapeHtml(act.name)}</div>
+                  <div class="activity-tag">${escapeHtml(act.tag)}</div>
+                </div>
+                <div class="activity-time">${act.time}</div>
+              </div>
+              ${deleteBtn}
+            </div>
+          `;
+        }).join('') || '<div class="activity-empty"><i data-lucide="files" aria-hidden="true"></i><p>Nenhuma atividade recente. Seus arquivos continuam salvos quando você limpa o histórico.</p></div>';
+        lucide.createIcons();
+      } catch (e) {
+        console.error("Erro ao carregar stats:", e);
+        for (const id of ['stat-today', 'stat-protected', 'stat-plan-text']) document.getElementById(id).innerText = '0';
+        const planBar = document.getElementById('stat-plan-bar');
+        if (planBar) planBar.style.width = '0%';
+        document.getElementById('activity-list').innerHTML = '<p role="alert" style="padding:20px;color:var(--text-muted);">Não foi possível carregar os dados. Use Atualizar para tentar novamente.</p>';
+      }
+    }
+
+    loadStats();
+
+    function openModal(type) {
+      const overlay = document.getElementById('modal-overlay');
+      const title = document.getElementById('modal-title');
+      const body = document.getElementById('modal-body');
+
+      currentLevel = 'normal';
+
+      if (type === 'image') {
+        title.innerText = "Variações de imagem";
+        body.innerHTML = `
+          <div class="level-selector">
+            <button type="button" class="level-btn" id="btn-lvl-basica" onclick="setLevel('basica')">01 Básica</button>
+            <button type="button" class="level-btn active" id="btn-lvl-normal" onclick="setLevel('normal')">02 Normal</button>
+            <button type="button" class="level-btn" id="btn-lvl-agressiva" onclick="setLevel('agressiva')">03 Agressiva</button>
+          </div>
+          <div class="dropzone" onclick="document.getElementById('file-input').click()">
+            <i data-lucide="upload-cloud" style="width: 32px; height: 32px; color: var(--purple);"></i>
+            <p><strong style="color: #FFF;">Clique ou arraste uma imagem aqui</strong><br>(JPG, PNG, WEBP)</p>
+            <input type="file" id="file-input" accept="image/*" style="display: none;" onchange="handleFileSelected(this, 'image')">
+          </div>
+          <div id="process-result" class="result-card"></div>
+        `;
+      } else if (type === 'video') {
+        title.innerText = "Camuflador de Vídeo & Gerador de Capa (Meta & TikTok)";
+        body.innerHTML = `
+          <!-- Video Dropzone -->
+          <div class="dropzone" id="video-dropzone" onclick="document.getElementById('video-file-input').click()" style="margin-bottom: 16px;">
+            <i data-lucide="video" style="width: 36px; height: 36px; color: var(--blue);"></i>
+            <p id="video-file-label"><strong style="color: #FFF;">Clique ou arraste seu vídeo aqui</strong><br>(MP4, MOV)</p>
+            <input type="file" id="video-file-input" accept="video/*" style="display: none;" onchange="handleVideoFileChange(this)">
+          </div>
+
+          <!-- Cover Mode Selection -->
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+              <span style="font-size: 13px; font-weight: 700; color: #FFF; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="image" style="width: 16px; height: 16px; color: var(--purple);"></i>
+                Capa do vídeo / miniatura
+              </span>
+              <span style="font-size: 11px; color: var(--emerald); font-weight: 600;">Revise o resultado antes de publicar</span>
+            </div>
+
+            <!-- Cover Tabs -->
+            <div style="display: flex; gap: 6px; margin-bottom: 14px;">
+              <button type="button" class="level-btn active" id="btn-cover-none" onclick="setCoverMode('none')">Sem Capa</button>
+              <button type="button" class="level-btn" id="btn-cover-ai" onclick="setCoverMode('ai')">Gerar com modelo pronto</button>
+              <button type="button" class="level-btn" id="btn-cover-upload" onclick="setCoverMode('upload')">📁 Upload Capa</button>
+            </div>
+
+            <!-- AI Cover Options -->
+            <div id="cover-ai-box" style="display: none; flex-direction: column; gap: 10px;">
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Selecione ou digite o Nicho:</label>
+                <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;">
+                  <span class="status-badge" style="cursor: pointer; padding: 4px 10px; font-size: 11px;" onclick="setNichePreset('Emagrecimento / Perda de Peso')">🔥 Emagrecimento</span>
+                  <span class="status-badge" style="cursor: pointer; padding: 4px 10px; font-size: 11px;" onclick="setNichePreset('Renda Extra / Marketing Digital')">💸 Renda Extra</span>
+                  <span class="status-badge" style="cursor: pointer; padding: 4px 10px; font-size: 11px;" onclick="setNichePreset('Relacionamento & Conquista')">💘 Relacionamento</span>
+                  <span class="status-badge" style="cursor: pointer; padding: 4px 10px; font-size: 11px;" onclick="setNichePreset('Estética & Beleza Facial')">✨ Estética</span>
+                </div>
+                <input type="text" id="niche-input" class="input-textarea" style="min-height: 40px; padding: 8px 12px;" placeholder="Ex: Emagrecimento, Tirzepatida, Renda Extra, etc.">
+              </div>
+
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Frase / Headline da Capa (Opcional):</label>
+                <input type="text" id="headline-input" class="input-textarea" style="min-height: 40px; padding: 8px 12px;" placeholder="Deixe em branco para usar uma frase do modelo">
+              </div>
+
+              <button type="button" id="btn-generate-cover" class="btn-action" style="margin-top: 0; padding: 12px 14px; font-size: 14px;" onclick="previewAICover()">
+                <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i>
+                Gerar Capa Agora
+              </button>
+              <p id="ai-cover-status" style="font-size: 12px; color: var(--text-muted); margin: 0;"></p>
+
+              <div id="ai-cover-preview-card" style="display: none; margin-top: 4px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.15); max-width: 240px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                <img id="ai-cover-img" src="" alt="Capa gerada" style="width: 100%; height: auto; display: block;" />
+              </div>
+            </div>
+
+            <!-- Upload Cover Options -->
+            <div id="cover-upload-box" style="display: none;">
+              <div class="dropzone" onclick="document.getElementById('cover-file-input').click()" style="padding: 18px 12px;">
+                <i data-lucide="image-plus" style="width: 26px; height: 26px; color: var(--purple);"></i>
+                <p id="cover-file-label"><strong style="color: #FFF;">Selecionar imagem de capa</strong> (JPG, PNG)</p>
+                <input type="file" id="cover-file-input" accept="image/*" style="display: none;" onchange="handleCoverFileChange(this)">
+              </div>
+            </div>
+          </div>
+
+          <!-- Timeline Padding Switch (Anti-Meta 10 Minutos) -->
+          <div style="background: rgba(37, 211, 102, 0.08); border: 1px solid rgba(37, 211, 102, 0.3); border-radius: 16px; padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+            <div style="flex: 1;">
+              <span style="font-size: 13px; font-weight: 800; color: #FFF; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="zap" style="width: 16px; height: 16px; color: #25D366;"></i>
+                Estender duração com imagem e silêncio
+                <span class="status-badge" style="background: rgba(37,211,102,0.2); color: #25D366; font-size: 10px; padding: 2px 6px;">Opcional</span>
+              </span>
+              <p style="font-size: 11px; color: #CBD5E1; margin-top: 3px; line-height: 1.4;">
+                Adiciona uma introdução e um trecho final estático. Aumenta a duração e o arquivo; não garante aprovação nem evita bloqueios.
+              </p>
+            </div>
+            <input type="checkbox" id="toggle-timeline-padding" style="width: 22px; height: 22px; accent-color: #25D366; cursor: pointer;">
+          </div>
+
+          <!-- Submit Action Button -->
+          <button type="button" class="btn-action" onclick="processVideoSubmission()" style="font-weight: 800; padding: 14px; font-size: 15px;">
+            <i data-lucide="shield-check" style="width: 18px; height: 18px;"></i>
+            Camuflar Vídeo Agora
+          </button>
+
+          <div id="process-result" class="result-card"></div>
+        `;
+      } else if (type === 'cloner') {
+        title.innerText = "Clonador de Página de Vendas (1-Clique)";
+        body.innerHTML = `
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+            Cole o link de qualquer página de vendas ou advertorial para clonar o código completo.
+          </p>
+          <input type="url" id="clone-url" class="input-textarea" style="min-height: 44px;" placeholder="https://exemplo-pagina-vendas.com.br">
+          <button class="btn-action" onclick="runPageCloner()">
+            <i data-lucide="download-cloud" style="width: 18px; height: 18px;"></i>
+            Clonar Página Agora
+          </button>
+          <div id="clone-result" class="result-card"></div>
+        `;
+      } else if (type === 'text') {
+        title.innerText = "Texto em imagem";
+        body.innerHTML = `
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+            Crie um card visual com seu texto. O texto pode continuar legível por ferramentas de OCR.
+          </p>
+          <textarea id="text-input" class="input-textarea" placeholder="Digite sua copy aqui..."></textarea>
+          <button class="btn-action" onclick="runTextToImage()">
+            <i data-lucide="image" style="width: 18px; height: 18px;"></i>
+            Gerar imagem
+          </button>
+          <div id="text-result" class="result-card"></div>
+        `;
+      } else if (type === 'metadata') {
+        title.innerText = "Limpador de Metadados EXIF & GPS";
+        body.innerHTML = `
+          <div class="dropzone" onclick="document.getElementById('file-input-m').click()">
+            <i data-lucide="trash-2" style="width: 32px; height: 32px; color: #94A3B8;"></i>
+            <p><strong style="color: #FFF;">Arraste foto ou vídeo para limpeza</strong></p>
+            <input type="file" id="file-input-m" style="display: none;" onchange="handleFileSelected(this, 'metadata')">
+          </div>
+          <div id="process-result" class="result-card"></div>
+        `;
+      } else if (type === 'compliance') {
+        title.innerText = "Revisão local de termos do anúncio";
+        body.innerHTML = `
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+            A ferramenta procura termos de uma lista local. Não usa IA nem substitui a revisão das políticas da plataforma.
+          </p>
+          <textarea id="copy-input" class="input-textarea" placeholder="Ex: Quer emagrecer 10kg em 30 dias sem dieta com nosso composto de Tirzepatida?"></textarea>
+          <button class="btn-action" onclick="runComplianceScan()">
+            <i data-lucide="sparkles" style="width: 18px; height: 18px;"></i>
+            Verificar termos
+          </button>
+          <div id="compliance-result" class="result-card"></div>
+        `;
+      } else if (type === 'cloaker') {
+        title.innerText = "Gerador de Cloaker Anti-Robô";
+        body.innerHTML = `
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div>
+              <label style="font-size: 12px; color: var(--text-muted);">Página Segura (White Page):</label>
+              <input type="text" id="safe-url" class="input-textarea" style="min-height: 40px; margin-top: 4px;" placeholder="https://exemplo-pagina-segura.com.br">
+            </div>
+            <div>
+              <label style="font-size: 12px; color: var(--text-muted);">Página da Oferta Real (Black Page):</label>
+              <input type="text" id="offer-url" class="input-textarea" style="min-height: 40px; margin-top: 4px;" placeholder="https://sua-oferta-real.com.br">
+            </div>
+          </div>
+          <button class="btn-action" onclick="generateCloakerScript()">
+            <i data-lucide="code" style="width: 18px; height: 18px;"></i>
+            Gerar Código do Cloaker (PHP)
+          </button>
+          <div id="cloaker-result" class="result-card"></div>
+        `;
+      } else if (type === 'script') {
+        title.innerText = "Modelos de roteiro para revisão";
+        body.innerHTML = `
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+            Gera sugestões usando modelos prontos. Confira as informações do produto e revise o texto antes de publicar; não há garantia de aprovação.
+          </p>
+          <input type="text" id="script-offer-input" class="input-textarea" style="min-height: 42px; margin-bottom: 12px;" placeholder="Ex: Tirzepatida, Emagrecimento, Renda Extra...">
+          <button class="btn-action" onclick="runGenerateWhiteScript()">
+            <i data-lucide="sparkles" style="width: 18px; height: 18px;"></i>
+            Gerar Roteiros White Agora
+          </button>
+          <div id="script-result" class="result-card"></div>
+        `;
+      } else if (type === 'studio') {
+        window.location.href = '/studio.html';
+        return;
+      }
+
+      overlay.style.display = 'flex';
+      overlay.scrollTop = 0;
+      document.body.classList.add('modal-open');
+      lucide.createIcons();
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').style.display = 'none';
+      document.body.classList.remove('modal-open');
+    }
+
+    function handleOverlayClick(e) {
+      if (e.target.id === 'modal-overlay') closeModal();
+    }
+
+    document.getElementById('modal-overlay').addEventListener('wheel', function (e) {
+      e.stopPropagation();
+    }, { passive: true });
+
+    let currentCoverMode = 'none';
+    let selectedVideoFile = null;
+    let selectedCoverFile = null;
+    let generatedCoverFilename = '';
+
+    function setCoverMode(mode) {
+      currentCoverMode = mode;
+      ['none', 'ai', 'upload'].forEach(m => {
+        const btn = document.getElementById(`btn-cover-${m}`);
+        if (btn) btn.classList.remove('active');
+      });
+      const activeBtn = document.getElementById(`btn-cover-${mode}`);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      const aiBox = document.getElementById('cover-ai-box');
+      const uploadBox = document.getElementById('cover-upload-box');
+      if (aiBox) aiBox.style.display = mode === 'ai' ? 'flex' : 'none';
+      if (uploadBox) uploadBox.style.display = mode === 'upload' ? 'block' : 'none';
+      lucide.createIcons();
+      if (mode === 'ai') {
+        selectedCoverFile = null;
+        previewAICover();
+      }
+    }
+
+    function setNichePreset(nicheName) {
+      const input = document.getElementById('niche-input');
+      if (input) input.value = nicheName;
+      if (currentCoverMode === 'ai') previewAICover();
+    }
+
+    function handleVideoFileChange(input) {
+      if (input.files && input.files[0]) {
+        selectedVideoFile = input.files[0];
+        const label = document.getElementById('video-file-label');
+        if (label) {
+          label.innerHTML = `<strong style="color: var(--emerald);">✓ ${selectedVideoFile.name}</strong><br>(${(selectedVideoFile.size / (1024*1024)).toFixed(2)} MB)`;
+        }
+      }
+    }
+
+    function handleCoverFileChange(input) {
+      if (input.files && input.files[0]) {
+        selectedCoverFile = input.files[0];
+        currentCoverMode = 'upload';
+        const label = document.getElementById('cover-file-label');
+        if (label) {
+          label.innerHTML = `<strong style="color: var(--emerald);">✓ Capa selecionada: ${selectedCoverFile.name}</strong>`;
+        }
+      }
+    }
+
+    async function previewAICover() {
+      const niche = document.getElementById('niche-input') ? document.getElementById('niche-input').value : 'Emagrecimento';
+      const headline = document.getElementById('headline-input') ? document.getElementById('headline-input').value : '';
+      const previewCard = document.getElementById('ai-cover-preview-card');
+      const img = document.getElementById('ai-cover-img');
+      const status = document.getElementById('ai-cover-status');
+      const btn = document.getElementById('btn-generate-cover');
+
+      if (previewCard) previewCard.style.display = 'block';
+      if (img) img.style.opacity = '0.4';
+      if (status) status.textContent = 'Gerando capa...';
+      if (btn) btn.disabled = true;
+
+      const formData = new FormData();
+      formData.append('niche', niche || 'Emagrecimento');
+      formData.append('custom_text', headline);
+
+      try {
+        const res = await fetch('/api/cover/generate-preview', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || 'Falha ao gerar capa');
+        }
+        generatedCoverFilename = data.filename || '';
+        if (img) {
+          img.src = `${data.preview_url}?t=${Date.now()}`;
+          img.style.opacity = '1';
+        }
+        if (status) status.textContent = 'Capa única gerada. Clique de novo para outra variação.';
+      } catch (e) {
+        if (status) status.textContent = `Erro ao gerar capa: ${e.message || e}`;
+        if (previewCard) previewCard.style.display = 'none';
+      } finally {
+        if (btn) btn.disabled = false;
+        lucide.createIcons();
+      }
+    }
+
+    async function processVideoSubmission() {
+      if (!selectedVideoFile) {
+        return alert("Por favor, selecione um arquivo de vídeo primeiro!");
+      }
+
+      const resultBox = document.getElementById('process-result');
+      const padChecked = document.getElementById('toggle-timeline-padding') ? document.getElementById('toggle-timeline-padding').checked : true;
+      resultBox.style.display = 'block';
+      resultBox.innerHTML = `<p style="font-size: 13px; color: var(--text-muted);">⏳ Processando vídeo em modo <strong>${currentLevel.toUpperCase()}</strong>${padChecked ? ' com padding. Isso pode levar 1 a 2 minutos' : ''}...</p>`;
+
+      const formData = new FormData();
+      formData.append('file', selectedVideoFile);
+      formData.append('level', currentLevel);
+      formData.append('cover_mode', currentCoverMode);
+      formData.append('timeline_padding', padChecked ? 'true' : 'false');
+
+      if (currentCoverMode === 'ai') {
+        const niche = document.getElementById('niche-input') ? document.getElementById('niche-input').value : 'Emagrecimento';
+        const headline = document.getElementById('headline-input') ? document.getElementById('headline-input').value : '';
+        formData.append('cover_mode', 'ai');
+        formData.append('niche', niche || 'Emagrecimento');
+        formData.append('custom_title', headline);
+        if (generatedCoverFilename) formData.append('generated_cover', generatedCoverFilename);
+      } else if (selectedCoverFile) {
+        formData.append('cover_mode', 'upload');
+        formData.append('cover_file', selectedCoverFile);
+      }
+
+      try {
+        const res = await fetch('/api/camouflage/video', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (res.ok) {
+          let coverHtml = '';
+          if (data.cover) {
+            coverHtml = `
+              <div style="margin-top: 12px; padding: 12px; background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 12px; display: flex; gap: 12px; align-items: center;">
+                <img src="${data.cover.download_url}" style="width: 60px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);" />
+                <div style="flex: 1;">
+                  <strong style="font-size: 13px; color: #FFF; display: block;">Frame Anti-Ban / Capa</strong>
+                  <span style="font-size: 11px; color: var(--text-muted);">Frame White Embutido</span>
+                  <a href="${data.cover.download_url}" download class="btn-action" style="background: var(--purple); color: #FFF; text-decoration: none; margin-top: 6px; padding: 6px 12px; font-size: 12px; display: inline-flex; width: auto;">
+                    <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+                    Baixar Imagem
+                  </a>
+                </div>
+              </div>
+            `;
+          }
+
+          resultBox.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: var(--emerald); font-weight: 700; font-size: 14px;">
+                <i data-lucide="check-circle" style="width: 18px; height: 18px;"></i>
+                Vídeo processado com sucesso!
+              </div>
+              <p style="font-size: 12px; color: var(--text-muted);">
+                ⏱️ <strong>Duração:</strong> <span style="color: #25D366; font-weight: 600;">${data.duration || 'Consulte o arquivo gerado'}</span>
+              </p>
+              <p style="font-size: 12px; color: var(--text-muted);">
+                🛡️ <strong>SHA-256 do arquivo:</strong> <code style="color: #FFF; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 10px;">${data.new_sha256}</code>
+              </p>
+              <a href="${data.download_url}" download="${data.filename || 'video.mp4'}" class="btn-action" style="background: var(--emerald); color: #000; font-weight: 800; text-decoration: none; margin-top: 8px;">
+                <i data-lucide="download" style="width: 18px; height: 18px;"></i>
+                Baixar vídeo processado
+              </a>
+              ${coverHtml}
+            </div>
+          `;
+          loadStats();
+          lucide.createIcons();
+        } else {
+          resultBox.innerHTML = `<p style="color: var(--red); font-size: 13px;">Erro: ${data.detail || 'Falha ao processar'}</p>`;
+        }
+      } catch (e) {
+        resultBox.innerHTML = `<p style="color: var(--red); font-size: 13px;">Erro de conexão com o servidor.</p>`;
+      }
+    }
+
+    async function handleFileSelected(input, type) {
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      const resultBox = document.getElementById('process-result');
+      
+      resultBox.style.display = 'block';
+      resultBox.innerHTML = `<p style="font-size: 13px; color: var(--text-muted);">⏳ Processando em modo <strong>${currentLevel.toUpperCase()}</strong>...</p>`;
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('level', currentLevel);
+
+      let endpoint = '/api/camouflage/image';
+      if (type === 'video') endpoint = '/api/camouflage/video';
+      if (type === 'metadata') endpoint = '/api/metadata/clean';
+
+      try {
+        const res = await fetch(endpoint, { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (res.ok) {
+          resultBox.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: var(--emerald); font-weight: 700; font-size: 14px;">
+                <i data-lucide="check-circle" style="width: 18px; height: 18px;"></i>
+                Camuflagem (${currentLevel.toUpperCase()}) Concluída!
+              </div>
+              <p style="font-size: 12px; color: var(--text-muted);">
+                Novo Hash gerado: <code style="color: #FFF; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">${data.new_hash || data.new_sha256 || 'HASH_OK'}</code>
+              </p>
+              <a href="${data.download_url}" download class="btn-action" style="background: var(--emerald); color: #000; text-decoration: none; margin-top: 8px;">
+                <i data-lucide="download" style="width: 18px; height: 18px;"></i>
+                Baixar Arquivo Blindado
+              </a>
+            </div>
+          `;
+          loadStats();
+          lucide.createIcons();
+        } else {
+          resultBox.innerHTML = `<p style="color: var(--red); font-size: 13px;">Erro: ${data.detail || 'Falha ao processar'}</p>`;
+        }
+      } catch (e) {
+        resultBox.innerHTML = `<p style="color: var(--red); font-size: 13px;">Erro de conexão com o servidor.</p>`;
+      }
+    }
+
+    async function runPageCloner() {
+      const url = document.getElementById('clone-url').value;
+      const resBox = document.getElementById('clone-result');
+      if (!url.trim()) return alert("Insira uma URL válida!");
+
+      resBox.style.display = 'block';
+      resBox.innerHTML = "<p style='font-size: 13px; color: var(--text-muted);'>⏳ Baixando e estruturando página de vendas...</p>";
+
+      const formData = new FormData();
+      formData.append('page_url', url);
+
+      try {
+        const res = await fetch('/api/clone/page', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (res.ok) {
+          resBox.innerHTML = `
+            <div style="color: var(--emerald); font-weight: 700; font-size: 14px; margin-bottom: 6px;">
+              ✓ Página Clonada com Sucesso! (${(data.html_length / 1024).toFixed(1)} KB)
+            </div>
+            <a href="${data.download_url}" download="pagina_clonada.html" class="btn-action" style="background: var(--cyan); color: #000; text-decoration: none;">
+              <i data-lucide="download" style="width: 18px; height: 18px;"></i>
+              Baixar Código HTML da Página
+            </a>
+          `;
+          loadStats();
+          lucide.createIcons();
+        } else {
+          resBox.innerHTML = `<p style="color: var(--red);">${data.detail}</p>`;
+        }
+      } catch (e) {
+        resBox.innerHTML = "<p style='color: var(--red);'>Erro ao conectar com o servidor.</p>";
+      }
+    }
+
+    async function runTextToImage() {
+      const text = document.getElementById('text-input').value;
+      const resBox = document.getElementById('text-result');
+      if (!text.trim()) return alert("Digite o texto!");
+
+      resBox.style.display = 'block';
+      resBox.innerHTML = "<p style='font-size: 13px; color: var(--text-muted);'>⏳ Renderizando texto em imagem anti-OCR...</p>";
+
+      const formData = new FormData();
+      formData.append('text', text);
+
+      try {
+        const res = await fetch('/api/camouflage/text-to-image', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (res.ok) {
+          resBox.innerHTML = `
+            <div style="color: var(--emerald); font-weight: 700; font-size: 14px; margin-bottom: 6px;">
+              ✓ Card Gerado com Proteção Anti-OCR!
+            </div>
+            <a href="${data.download_url}" download class="btn-action" style="background: var(--pink); color: #FFF; text-decoration: none;">
+              <i data-lucide="download" style="width: 18px; height: 18px;"></i>
+              Baixar Imagem da Copy
+            </a>
+          `;
+          loadStats();
+          lucide.createIcons();
+        }
+      } catch (e) {
+        resBox.innerHTML = "<p style='color: var(--red);'>Erro ao gerar imagem.</p>";
+      }
+    }
+
+    async function runComplianceScan() {
+      const text = document.getElementById('copy-input').value;
+      const resBox = document.getElementById('compliance-result');
+      if (!text.trim()) return alert("Digite ou cole a copy primeiro!");
+
+      resBox.style.display = 'block';
+      resBox.innerHTML = "<p style='font-size: 13px; color: var(--text-muted);'>⏳ Consultando a lista local de termos...</p>";
+
+      const formData = new FormData();
+      formData.append('copy_text', text);
+
+      try {
+        const res = await fetch('/api/compliance/analyze', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        let triggersHtml = "";
+        if (data.found_triggers.length > 0) {
+          triggersHtml = `
+            <div style="margin-top: 10px;">
+              <strong style="font-size: 12px; color: var(--red);">🚨 Termos com Risco de Bloqueio Detectados:</strong>
+              <ul style="font-size: 12px; color: var(--text-muted); margin-left: 18px; margin-top: 4px;">
+                ${data.found_triggers.map(t => `<li><strong style="color: #FFF;">"${t.word}"</strong>: ${t.reason}</li>`).join('')}
+              </ul>
+            </div>
+          `;
+        }
+
+        resBox.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; font-weight: 700;">Resultado da lista de termos:</span>
+            <span style="font-size: 13px; font-weight: 800; color: ${data.color}; background: rgba(255,255,255,0.06); padding: 4px 10px; border-radius: 99px;">
+              ${data.risk_level} (${data.risk_score}/100 — índice local)
+            </span>
+          </div>
+          <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">${data.recommendation}</p>
+          ${triggersHtml}
+          <div style="margin-top: 12px; padding: 10px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 10px;">
+            <strong style="font-size: 12px; color: var(--emerald);">💡 Texto original para revisão:</strong>
+            <p style="font-size: 12px; color: #FFF; margin-top: 4px;">${escapeHtml(data.safe_rewrite)}</p>
+          </div>
+        `;
+        lucide.createIcons();
+      } catch (e) {
+        resBox.innerHTML = "<p style='color: var(--red);'>Erro ao executar análise.</p>";
+      }
+    }
+
+    async function generateCloakerScript() {
+      const safe = document.getElementById('safe-url').value;
+      const offer = document.getElementById('offer-url').value;
+      const resBox = document.getElementById('cloaker-result');
+
+      const formData = new FormData();
+      formData.append('safe_url', safe);
+      formData.append('offer_url', offer);
+
+      try {
+        const res = await fetch('/api/cloaker/generate', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        resBox.style.display = 'block';
+        resBox.innerHTML = `
+          <strong style="font-size: 12px; color: #FFF;">Código do Roteador Anti-Robô (index.php):</strong>
+          <textarea class="input-textarea" style="font-family: monospace; font-size: 11px; margin-top: 6px; min-height: 140px;" readonly>${data.code}</textarea>
+          <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+            Basta salvar esse código como <code>index.php</code> na raiz da sua hospedagem.
+          </p>
+        `;
+      } catch (e) {
+        resBox.innerHTML = "<p style='color: var(--red);'>Erro ao gerar cloaker.</p>";
+      }
+    }
+
+    async function runGenerateWhiteScript() {
+      const offer = document.getElementById('script-offer-input').value;
+      const resBox = document.getElementById('script-result');
+      if (!offer.trim()) return alert("Digite seu nicho ou produto primeiro!");
+
+      resBox.style.display = 'block';
+      resBox.innerHTML = "<p style='font-size: 13px; color: var(--text-muted);'>⏳ Gerando roteiros de 8 a 10s com engenharia anti-ban...</p>";
+
+      const formData = new FormData();
+      formData.append('black_offer', offer);
+      formData.append('niche', offer);
+
+      try {
+        const res = await fetch('/api/scripts/generate-white-script', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (res.ok && data.templates) {
+          resBox.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 6px;">
+              ${data.templates.map(t => `
+                <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <strong style="font-size: 13px; color: #F59E0B;">${t.title}</strong>
+                    <span style="font-size: 11px; color: var(--text-muted); background: rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 99px;">⏱️ ${t.duration}</span>
+                  </div>
+                  <p style="font-size: 13px; color: #FFF; line-height: 1.5; font-style: italic; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; border-left: 3px solid #F59E0B;">
+                    "${t.script}"
+                  </p>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                    <span style="font-size: 11px; color: var(--emerald);">✓ CTA no Anúncio: <strong>${t.cta}</strong></span>
+                    <button class="level-btn" style="padding: 4px 10px; font-size: 11px;" onclick="navigator.clipboard.writeText('${t.script.replace(/'/g, "\\'")}'); alert('Roteiro copiado!')">📋 Copiar</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }
+      } catch (e) {
+        resBox.innerHTML = "<p style='color: var(--red);'>Erro ao gerar roteiros.</p>";
+      }
+    }
+
+    // === NOVAS FEATURES ENTERPRISE v3.0 ===
+    async function loadCloakerStats() {
+      const resBox = document.getElementById('analytics-result');
+      resBox.style.display = 'block';
+      resBox.innerHTML = "<p style='font-size: 13px; color: var(--text-muted);'>⏳ Carregando analytics...</p>";
+      try {
+        const res = await fetch('/api/cloaker/stats');
+        const data = await res.json();
+        resBox.innerHTML = `
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 8px;">
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 12px; border-radius: 8px; text-align: center;">
+              <div style="font-size: 24px; font-weight: 800; color: var(--emerald);">${data.total_access}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">Total Acessos</div>
+            </div>
+            <div style="background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 8px; text-align: center;">
+              <div style="font-size: 24px; font-weight: 800; color: var(--red);">${data.bots_blocked}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">Bots Bloqueados</div>
+            </div>
+            <div style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 8px; text-align: center;">
+              <div style="font-size: 24px; font-weight: 800; color: var(--blue);">${data.humans_passed}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">Humanos Liberados</div>
+            </div>
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 12px; border-radius: 8px; text-align: center;">
+              <div style="font-size: 24px; font-weight: 800; color: var(--amber);">${data.manual_reviewers}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">Revisores Manuais</div>
+            </div>
+          </div>
+        `;
+      } catch (e) {
+        resBox.innerHTML = "<p style='color: var(--red);'>Erro ao carregar stats.</p>";
+      }
+    }
+
+    async function generateWhiteLandingPage() {
+      const niche = prompt("Digite o nicho (ex: Saúde, Emagrecimento, Renda Extra):");
+      if (!niche) return;
+      const resBox = document.getElementById('landing-result');
+      resBox.style.display = 'block';
+      resBox.innerHTML = "<p style='font-size: 13px; color: var(--text-muted);'>⏳ Montando página informativa...</p>";
+      try {
+        const formData = new FormData();
+        formData.append('niche', niche);
+        const res = await fetch('/api/landing-page/generate', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (res.ok) {
+          resBox.innerHTML = `
+            <div style="color: var(--emerald); font-weight: 700; margin-bottom: 8px;">✓ Landing Page White Gerada!</div>
+            <a href="${data.download_url}" download class="btn-action" style="background: var(--blue); color: #FFF; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+              <i data-lucide="download" style="width: 16px; height: 16px;"></i> Baixar HTML
+            </a>
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">HTML gerado por modelo pronto; revise antes de publicar. Sem garantia de aprovação.</p>
+          `;
+          lucide.createIcons();
+        }
+      } catch (e) {
+        resBox.innerHTML = "<p style='color: var(--red);'>Erro ao gerar landing page.</p>";
+      }
+    }
+
+    async function generateStealthCover() {
+      const niche = prompt("Digite o nicho pra capa stealth (ex: Emagrecimento):");
+      if (!niche) return;
+      const resBox = document.getElementById('stealth-result');
+      resBox.style.display = 'block';
+      resBox.innerHTML = "<p style='font-size: 13px; color: var(--text-muted);'>⏳ Gerando capa stealth com hash único...</p>";
+      try {
+        const formData = new FormData();
+        formData.append('niche', niche);
+        const res = await fetch('/api/stealth/generate-cover', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (res.ok) {
+          resBox.innerHTML = `
+            <div style="color: var(--emerald); font-weight: 700; margin-bottom: 8px;">✓ Variação de capa gerada!</div>
+            <a href="${data.download_url}" download class="btn-action" style="background: var(--purple); color: #FFF; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+              <i data-lucide="download" style="width: 16px; height: 16px;"></i> Baixar Capa
+            </a>
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Variação visual gerada. O conteúdo pode continuar reconhecível por similaridade.</p>
+          `;
+          lucide.createIcons();
+        }
+      } catch (e) {
+        resBox.innerHTML = "<p style='color: var(--red);'>Erro ao gerar capa stealth.</p>";
+      }
+    }
+
+    async function adminRequest(url, options = {}) {
+      const key = document.getElementById('admin-key').value.trim();
+      if (!key) throw new Error('Informe sua chave administrativa no campo acima das ferramentas adicionais.');
+      const response = await fetch(url, {...options, headers: {...options.headers, Authorization: `Bearer ${key}`}});
+      if (response.status === 401) throw new Error('Chave administrativa inválida ou ADMIN_API_KEY não configurada no servidor.');
+      if (response.status === 429) throw new Error(`Limite de requisições atingido. Aguarde ${response.headers.get('Retry-After') || 60} segundos.`);
+      if (!response.ok) throw new Error('Não foi possível concluir a operação administrativa. Confira os dados informados.');
+      return response;
+    }
+
+    async function createApiKey() {
+      const plan = prompt("Digite o plano (free, pro, enterprise):", "pro");
+      if (!plan) return;
+      const resBox = document.getElementById('apikey-result');
+      resBox.style.display = 'block';
+      resBox.innerHTML = "<p style='font-size: 13px; color: var(--text-muted);'>⏳ Gerando API Key...</p>";
+      try {
+        const formData = new FormData();
+        formData.append('plan', plan);
+        const res = await adminRequest('/api/auth/create-key', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (res.ok) {
+          resBox.innerHTML = `
+            <div style="color: var(--emerald); font-weight: 700; margin-bottom: 8px;">✓ API Key Criada!</div>
+            <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; font-family: monospace; font-size: 12px; color: #FFF; word-break: break-all; margin-bottom: 8px;">
+              ${data.api_key}
+            </div>
+            <button class="level-btn" style="padding: 6px 12px; font-size: 12px;" onclick="navigator.clipboard.writeText('${data.api_key}'); alert('API Key copiada!')">📋 Copiar Chave</button>
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Plano: <strong>${data.plan}</strong>. Use no header X-API-Key das requisições.</p>
+          `;
+        }
+      } catch (e) {
+        resBox.innerHTML = `<p role="alert" style="color:var(--red);">${escapeHtml(e.message)}</p>`;
+      }
+    }
+
+    async function rotateDomain() {
+      const domain = prompt("Digite o novo domínio ativo (ex: meu-site-novo.com.br):");
+      if (!domain) return;
+      const resBox = document.getElementById('domain-result');
+      resBox.style.display = 'block';
+      resBox.innerHTML = "<p style='font-size: 13px; color: var(--text-muted);'>⏳ Rotacionando domínio...</p>";
+      try {
+        const formData = new FormData();
+        formData.append('new_domain', domain);
+        const res = await adminRequest('/api/domain/rotate', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (res.ok) {
+          resBox.innerHTML = `
+            <div style="color: var(--emerald); font-weight: 700; margin-bottom: 8px;">✓ Domínio Rotacionado!</div>
+            <p style="font-size: 13px; color: #FFF;">Domínio ativo agora: <strong>${data.active_domain}</strong></p>
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Registro atualizado apenas no banco local; DNS e hospedagem não foram alterados.</p>
+          `;
+        }
+      } catch (e) {
+        resBox.innerHTML = `<p role="alert" style="color:var(--red);">${escapeHtml(e.message)}</p>`;
+      }
+    }
+
+    async function exportToGoogleSheets() {
+      const resBox = document.getElementById('export-result');
+      resBox.style.display = 'block';
+      resBox.innerHTML = "<p style='font-size: 13px; color: var(--text-muted);'>⏳ Exportando dados...</p>";
+      try {
+        const res = await adminRequest('/api/export/google-sheets');
+        const data = await res.json();
+        if (res.ok) {
+          resBox.innerHTML = `
+            <div style="color: var(--emerald); font-weight: 700; margin-bottom: 8px;">✓ Dados Exportados!</div>
+            <a href="${data.download_url}" download class="btn-action" style="background: var(--cyan); color: #000; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+              <i data-lucide="download" style="width: 16px; height: 16px;"></i> Baixar CSV
+            </a>
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Importe esse CSV no Google Sheets pra ter relatório automático de bots vs humanos.</p>
+          `;
+          lucide.createIcons();
+        }
+      } catch (e) {
+        resBox.innerHTML = `<p role="alert" style="color:var(--red);">${escapeHtml(e.message)}</p>`;
+      }
+    }
+  </script>
+
+  <!-- === CARDS DAS NOVAS FEATURES ENTERPRISE v3.0 === -->
+  <section class="container additional-tools" aria-labelledby="additional-title">
+    <h2 id="additional-title" style="font-size: 22px; font-weight: 800; margin-bottom: 24px; display: flex; align-items: center; gap: 10px;">
+      <i data-lucide="zap" style="color: var(--amber);"></i>
+      Ferramentas adicionais
+    </h2>
+    <div style="margin-bottom:24px;max-width:500px;">
+      <label for="admin-key" style="display:block;margin-bottom:8px;">Chave administrativa</label>
+      <input id="admin-key" type="password" autocomplete="off" spellcheck="false" maxlength="512" placeholder="Necessária para criar chaves, registrar domínio e exportar" class="input-textarea" style="min-height:44px;padding:12px;">
+      <p style="font-size:12px;color:var(--text-muted);margin-top:8px;">Não é salva no navegador. Use a chave definida em ADMIN_API_KEY no servidor.</p>
+    </div>
+
+    <div class="stats-grid additional-grid">
+      <!-- Analytics Dashboard -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label" style="color: var(--blue);"><i data-lucide="chart-no-axes-column" aria-hidden="true"></i> Analytics do Cloaker</span>
+        </div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Veja em tempo real quantos bots foram bloqueados e quantos humanos passaram.</p>
+        <button class="btn-action" style="background: var(--blue); color: #FFF; width: 100%;" onclick="loadCloakerStats()">Carregar Stats</button>
+        <div id="analytics-result" style="margin-top: 12px; display: none;"></div>
+      </div>
+
+      <!-- Landing Page White -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label" style="color: var(--emerald);"><i data-lucide="file-text" aria-hidden="true"></i> Página informativa por modelo</span>
+        </div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Gere um HTML por modelo pronto. Revise o conteúdo e publique manualmente.</p>
+        <button class="btn-action" style="background: var(--emerald); color: #000; width: 100%;" onclick="generateWhiteLandingPage()">Gerar Página White</button>
+        <div id="landing-result" style="margin-top: 12px; display: none;"></div>
+      </div>
+
+      <!-- Stealth Cover -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label" style="color: var(--purple);"><i data-lucide="layers" aria-hidden="true"></i> Variações de capa</span>
+        </div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Crie capas com variações visuais. Isso não impede reconhecimento por similaridade.</p>
+        <button class="btn-action" style="background: var(--purple); color: #FFF; width: 100%;" onclick="generateStealthCover()">Gerar Capa Stealth</button>
+        <div id="stealth-result" style="margin-top: 12px; display: none;"></div>
+      </div>
+
+      <!-- API Key Auth -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label" style="color: var(--amber);"><i data-lucide="key-round" aria-hidden="true"></i> API Key (Controle de Acesso)</span>
+        </div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Cadastre chaves locais. O controle de acesso ainda não é aplicado a todas as ferramentas.</p>
+        <button class="btn-action" style="background: var(--amber); color: #000; width: 100%;" onclick="createApiKey()">Criar API Key</button>
+        <div id="apikey-result" style="margin-top: 12px; display: none;"></div>
+      </div>
+
+      <!-- Domain Rotator -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label" style="color: var(--pink);"><i data-lucide="globe" aria-hidden="true"></i> Rotador de Domínio (Contingência)</span>
+        </div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Registre manualmente um domínio no banco local. Não altera DNS nem hospedagem.</p>
+        <button class="btn-action" style="background: var(--pink); color: #FFF; width: 100%;" onclick="rotateDomain()">Rotacionar Domínio</button>
+        <div id="domain-result" style="margin-top: 12px; display: none;"></div>
+      </div>
+
+      <!-- Export Google Sheets -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label" style="color: var(--cyan);"><i data-lucide="table" aria-hidden="true"></i> Exportar pra Google Sheets</span>
+        </div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Baixe um CSV dos registros locais e importe manualmente no Google Sheets.</p>
+        <button class="btn-action" style="background: var(--cyan); color: #000; width: 100%;" onclick="exportToGoogleSheets()">Exportar Dados</button>
+        <div id="export-result" style="margin-top: 12px; display: none;"></div>
+      </div>
+
+      <!-- SEO Autopilot (Estilo Soro/trysoro.com) -->
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label" style="color: var(--gold);"><i data-lucide="pencil" aria-hidden="true"></i> Artigo SEO por modelo</span>
+        </div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Monte um artigo HTML usando modelos prontos. Não consulta IA nem publica ou garante tráfego.</p>
+        <button class="btn-action" style="width: 100%;" onclick="generateSeoArticle()">Gerar Artigo SEO</button>
+        <div id="seo-result" style="margin-top: 12px; display: none;"></div>
+      </div>
+    </div>
+  </section>
+
+  <style>
+    .tool-card[onclick*="script"] .tool-icon,
+    .tool-card[onclick*="script"] .tool-icon i {
+      color: var(--gold) !important;
+    }
+  </style>
+
+  <script>
+    // Initialize Lucide icons for new cards
+    lucide.createIcons();
+
+    // === FUNÇÃO SEO AUTOPILOT (Estilo Soro) ===
+    async function generateSeoArticle() {
+      const niche = prompt("Digite o nicho/produto (ex: Perfume Importado, Fone JBL, Emagrecimento):");
+      if (!niche) return;
+      const keyword = prompt("Palavra-chave principal (opcional, ex: perfume masculino):") || "";
+      const tone = prompt("Tom do artigo (educativo, comparativo, guia):", "educativo") || "educativo";
+
+      const resBox = document.getElementById('seo-result');
+      resBox.style.display = 'block';
+      resBox.innerHTML = "<p style='font-size: 13px; color: var(--text-muted);'>⏳ Montando artigo SEO por modelo (palavras-chave + schema markup)...</p>";
+
+      try {
+        const formData = new FormData();
+        formData.append('niche', niche);
+        formData.append('keyword', keyword);
+        formData.append('tone', tone);
+
+        const res = await fetch('/api/seo/generate-article', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (res.ok && data.status === 'success') {
+          resBox.innerHTML = `
+            <div style="color: var(--acid-green); font-weight: 700; margin-bottom: 8px;">✓ Artigo SEO Gerado com Sucesso!</div>
+            <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; font-size: 12px; color: #FFF; margin-bottom: 8px;">
+              <strong>Título:</strong> ${data.title}<br>
+              <strong>Slug:</strong> ${data.slug}<br>
+              <strong>Palavras-chave:</strong> ${data.related_keywords.slice(0,3).join(', ')}...
+            </div>
+            <a href="${data.download_url}" download class="btn-action" style="background: var(--gold); color: #000; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px;">
+              <i data-lucide="download" style="width: 16px; height: 16px;"></i> Baixar HTML SEO
+            </a>
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">HTML com marcação JSON-LD. Revise os fatos, o endereço canônico e o conteúdo antes de publicar.</p>
+          `;
+          lucide.createIcons();
+        } else {
+          resBox.innerHTML = `<p style="color: var(--danger);">Erro: ${data.message || 'Falha ao gerar artigo'}</p>`;
+        }
+      } catch (e) {
+        resBox.innerHTML = "<p style='color: var(--danger);'>Erro de conexão ao gerar artigo SEO.</p>";
+      }
+    }
+
+    // === FUNÇÃO DELETAR ARQUIVO GERADO (COM RELOAD FORÇADO) ===
+    async function deleteFile(filename) {
+      if (!confirm(`Tem certeza que quer excluir "${filename}"? Essa ação não pode ser desfeita.`)) return;
+      try {
+        const formData = new FormData();
+        formData.append('filename', filename);
+        const res = await fetch('/api/file/delete', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+          alert(`✓ Arquivo "${filename}" excluído com sucesso!`);
+          // RELOAD FORÇADO PRA GARANTIR QUE SOME DA LISTA (mata cache do DOM)
+          await loadStats();
+        } else {
+          alert(`Erro ao excluir: ${data.message || 'Falha desconhecida'}`);
+        }
+      } catch (e) {
+        alert('Erro de conexão ao tentar excluir o arquivo.');
+      }
+    }
+
+    // === FUNÇÃO LIMPAR TODO O HISTÓRICO DE ATIVIDADE ===
+    async function clearAllActivity() {
+      if (!confirm('Limpar os registros da atividade recente? Seus arquivos serão preservados.')) return;
+      try {
+        const res = await fetch('/api/activity/clear-all', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+          alert(data.message);
+          await loadStats();
+        } else {
+          alert(`Erro ao limpar histórico: ${data.message || 'Falha desconhecida'}`);
+        }
+      } catch (e) {
+        alert('Erro de conexão ao tentar limpar o histórico.');
+      }
+    }
+
+  </script>
+</body>
+</html>
