@@ -1,5 +1,6 @@
 import copy
 import asyncio
+from array import array
 import hashlib
 import json
 import os
@@ -67,6 +68,41 @@ class MediaFixtures(unittest.TestCase):
                        check=True, capture_output=True, timeout=30)
 
 class MediaCloakTest(MediaFixtures):
+    def test_sync_survives_video_filter_reinitialization_at_cover_boundary(self):
+        parts = []
+        for name, video, audio, seconds in (
+            ("cover", "color=blue:s=128x96:r=30:d=2", "anullsrc=r=44100:cl=mono", 2),
+            ("speech", "color=black:s=256x192:r=30:d=4,drawbox=color=white:t=fill:enable='between(t,1,1.2)+between(t,3,3.2)'",
+             r"aevalsrc=if(between(t\,1\,1.2)+between(t\,3\,3.2)\,0.8*sin(2*PI*1000*t)\,0):s=44100:d=4", 4),
+        ):
+            part = self.output / (name + ".mp4")
+            subprocess.run([self.ffmpeg, "-v", "error", "-y", "-f", "lavfi", "-i", video,
+                            "-f", "lavfi", "-i", audio, "-t", str(seconds),
+                            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", str(part)],
+                           check=True, capture_output=True, timeout=30)
+            parts.append(part)
+        playlist = self.output / "concat.txt"
+        playlist.write_text("".join(f"file '{part.as_posix()}'\n" for part in parts), encoding="utf-8")
+        source = self.output / "changing-resolution.mp4"
+        subprocess.run([self.ffmpeg, "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(playlist),
+                        "-c", "copy", str(source)], check=True, capture_output=True, timeout=30)
+        output = self.output / "synchronized.mp4"
+        media_cloak.cloak_video(source, output)
+        frames = subprocess.run([self.ffmpeg, "-v", "error", "-i", str(output), "-an", "-vf",
+                                 "fps=60,scale=1:1,format=gray", "-f", "rawvideo", "-"],
+                                check=True, capture_output=True, timeout=30).stdout
+        flash = [index / 60 for index, pixel in enumerate(frames) if pixel > 180]
+        raw = subprocess.run([self.ffmpeg, "-v", "error", "-i", str(output), "-vn", "-ac", "1",
+                              "-ar", "6000", "-f", "f32le", "-"],
+                             check=True, capture_output=True, timeout=30).stdout
+        samples = array("f")
+        samples.frombytes(raw)
+        beep = [index / 6000 for index, value in enumerate(samples) if abs(value) > .2]
+        self.assertTrue(flash and beep)
+        for first_or_last in (0, -1):
+            self.assertAlmostEqual(flash[first_or_last], beep[first_or_last], delta=.075)
+        self.assertGreater(flash[0], 2.9)
+
     def test_audio_each_level(self):
         for level in media_cloak.LEVELS:
             with self.subTest(level=level):
