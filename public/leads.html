@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dashboard de Leads · StealthForge</title>
+  <link rel="icon" href="/stealthforge-mark.svg"><link rel="stylesheet" href="/portal.css?v=leads-1">
+  <script src="/leads.js?v=1" defer></script>
+</head>
+<body class="leads-page">
+  <header class="portal-header"><div class="portal-bar">
+    <a class="portal-brand" href="/">STEALTHFORGE</a>
+    <nav aria-label="Navegação principal"><a href="/">Painel</a><a href="/studio.html">Estúdio IA</a><a href="/leads.html" aria-current="page">Leads</a></nav>
+  </div></header>
+  <div class="leads-shell">
+    <div class="leads-heading"><div><p>INTELIGÊNCIA COMERCIAL</p><h1>Dashboard de Leads</h1></div>
+      <div class="leads-actions"><button id="import-csv" class="portal-button" disabled>Importar CSV</button><button id="sync-external" class="portal-button secondary" disabled><span class="spinner" hidden aria-hidden="true"></span>Sincronizar API</button></div>
+    </div>
+    <p id="leads-stats" aria-live="polite"></p>
+    <section class="filter-section" aria-label="Filtros de leads">
+      <label>Perfil da empresa<select data-filter="firmographic"><option value="">Todos os perfis</option></select></label>
+      <label>Etapa de intenção<select data-filter="intent"><option value="">Todas as etapas</option><option>Awareness</option><option>Consideration</option><option>Decision</option></select></label>
+      <label>Origem<select data-filter="source"><option value="">Todas as origens</option><option value="clay">Clay</option><option value="phantom">PhantomBuster</option><option value="gtm-ai">GTM.AI</option><option value="manual">Manual</option></select></label>
+    </section>
+    <p id="leads-status" role="status" aria-live="polite">Aceite o uso de dados para carregar os leads.</p>
+    <ul id="import-errors" class="portal-error" hidden aria-label="Erros de importação"></ul>
+    <main id="leads-container" class="grid-leads" aria-label="Leads" aria-busy="false"></main>
+    <input id="csv-file" type="file" accept=".csv,text/csv" hidden>
+    <footer><button id="lgpd-settings" class="portal-button secondary">Preferências de dados</button></footer>
+  </div>
+  <div id="lgpd-banner" class="lgpd-banner" role="region" aria-label="Privacidade">
+    <p>Este painel usa dados de contatos e sinais de intenção. Aceite para carregar os leads. Você pode recusar ou alterar sua escolha a qualquer momento.</p>
+    <button id="lgpd-accept" class="portal-button">Aceitar</button><button id="lgpd-decline" class="portal-button secondary">Recusar</button>
+  </div>
+</body>
+</html>
