@@ -352,7 +352,7 @@ class CustomerAccessMiddleware:
             if master and any(hmac.compare_digest(value.encode(), master.encode()) for value in candidates if value):
                 customer = {'id': 0, 'name': 'Administracao', 'email': '', 'role': 'admin', 'status': 'approved'}
         public_api = {'/api/account/register', '/api/account/login', '/api/account/logout'}
-        protected_page = path in {'/', '/studio.html', '/clients.html'}
+        protected_page = path in {'/', '/studio.html', '/clients.html', '/leads.html'}
         protected_api = path.startswith('/api/') and path not in public_api
         if not customer and (protected_page or protected_api):
             response = RedirectResponse('/login.html?next=' + quote(path), status_code=303) if protected_page else JSONResponse({'detail': 'Entre na sua conta.'}, status_code=401)

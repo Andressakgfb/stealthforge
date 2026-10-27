@@ -3,3 +3,4 @@ uvicorn==0.53.0
 pillow==12.3.0
 python-multipart==0.0.32
 imageio-ffmpeg==0.6.0
+httpx==0.28.1

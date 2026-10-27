@@ -1892,5 +1892,7 @@ from server.product_video import router as product_video_router
 
 app.include_router(product_video_router)
 app.include_router(accounts.router)
+from server.routers.leads import router as leads_router
+app.include_router(leads_router)
 app.mount("/", StaticFiles(directory=PUBLIC_DIR, html=True), name="public")
 app = SecurityHeadersMiddleware(app)
