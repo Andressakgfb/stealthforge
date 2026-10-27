@@ -768,10 +768,13 @@ async def camouflage_video(
     generated_cover: str = Form(""),
     timeline_padding: bool = Form(False),
     padding_seconds: int = Form(610), # 10m 10s
+    extension_minutes: int | None = Form(None),
     cover_file: UploadFile = File(None)
 ):
     if cover_mode not in {"none", "ai", "upload"} or not 10 <= padding_seconds <= 1800:
         raise HTTPException(400, "Confira o modo de capa e a duracao solicitada (10 a 1800 segundos).")
+    if timeline_padding and extension_minutes is not None and not 1 <= extension_minutes <= 30:
+        raise HTTPException(400, "Escolha de 1 a 30 minutos adicionais para o video.")
     try:
         content = await file.read(100 * 1024 * 1024 + 1)
         if len(content) > 100 * 1024 * 1024:
@@ -830,6 +833,8 @@ async def camouflage_video(
         if os.path.exists(ffmpeg_exe) and cover_path and os.path.exists(cover_path):
             try:
                 pad_time = max(10, int(padding_seconds - probe_duration)) if timeline_padding else 0
+                if timeline_padding and extension_minutes is not None:
+                    pad_time = extension_minutes * 60 - 4
                 ffmpeg_success = apply_timeline_padding(
                     ffmpeg_exe, raw_video_path, cover_path, out_path, pad_time, intro_seconds=4
                 )
@@ -867,6 +872,11 @@ async def camouflage_video(
                     os.remove(partial)
             raise HTTPException(422, "Nao foi possivel processar o video. Confira o formato e tente outro arquivo.")
         actual_duration, _ = probe_media(ffmpeg_exe, out_path)
+        if timeline_padding and extension_minutes is not None and abs(actual_duration - probe_duration - extension_minutes * 60) > 2:
+            for partial in (raw_video_path, out_path):
+                if os.path.isfile(partial):
+                    os.remove(partial)
+            raise HTTPException(422, "Nao foi possivel aplicar o tempo de extensao solicitado. Tente novamente.")
                 
         # Limpar arquivo temporário bruto
         if os.path.exists(raw_video_path):

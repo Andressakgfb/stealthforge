@@ -80,6 +80,43 @@ class FunctionalClaimsTest(unittest.TestCase):
         self.assertIsNone(response.json()['cover'])
         self.assertAlmostEqual(response.json()['duration_seconds'], 1, delta=0.1)
 
+    def test_selected_extension_adds_minutes_instead_of_targeting_total_duration(self):
+        original = self.tagged_video()
+        for minutes in (1, 2):
+            with self.subTest(minutes=minutes):
+                response = self.client.post('/api/camouflage/video',
+                    data={'timeline_padding': 'true', 'extension_minutes': str(minutes)},
+                    files={'file': ('movie.mp4', original, 'video/mp4')})
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertAlmostEqual(response.json()['duration_seconds'], 1 + minutes * 60, delta=0.5)
+
+    def test_invalid_extension_is_rejected_before_creating_files(self):
+        for minutes in ('0', '-1', '31', '1.5', 'abc'):
+            with self.subTest(minutes=minutes):
+                response = self.client.post('/api/camouflage/video',
+                    data={'timeline_padding': 'true', 'extension_minutes': minutes},
+                    files={'file': ('movie.mp4', b'not-a-video', 'video/mp4')})
+                self.assertIn(response.status_code, (400, 422), response.text)
+                self.assertFalse(list(self.processed.iterdir()))
+
+    def test_extension_does_not_apply_when_option_is_off(self):
+        response = self.client.post('/api/camouflage/video',
+            data={'timeline_padding': 'false', 'extension_minutes': '2'},
+            files={'file': ('movie.mp4', self.tagged_video(), 'video/mp4')})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertAlmostEqual(response.json()['duration_seconds'], 1, delta=0.1)
+
+    def test_failed_extension_does_not_report_fallback_as_success(self):
+        before = copy.deepcopy(main.STATS)
+        with patch.object(main, 'apply_timeline_padding', return_value=False):
+            response = self.client.post('/api/camouflage/video',
+                data={'timeline_padding': 'true', 'extension_minutes': '1'},
+                files={'file': ('movie.mp4', self.tagged_video(), 'video/mp4')})
+        self.assertEqual(response.status_code, 422, response.text)
+        self.assertEqual(main.STATS, before)
+        self.assertFalse(list(self.processed.glob('cads_video_*')))
+        self.assertFalse(list(self.processed.glob('_tmp_*')))
+
     def test_invalid_files_are_not_reported_as_processed(self):
         for route, name, expected in [('/api/metadata/clean', 'file.txt', 415),
                                        ('/api/metadata/clean', 'file.mp4', 422),
