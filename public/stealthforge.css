@@ -8,6 +8,7 @@ button, input, textarea, select { font: inherit; }
 .container { max-width: 1180px; gap: 26px; padding-top: 0; }
 header {
   position: relative;
+  z-index: 1;
   min-height: 128px;
   isolation: isolate;
   border-bottom: 1px solid #4cbaff35;
