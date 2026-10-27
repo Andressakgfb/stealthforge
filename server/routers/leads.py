@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Requ
 from starlette.concurrency import run_in_threadpool
 from server import accounts
 from server.schemas.leads import Lead, Source
-from server.services.intent_service import IntentServiceError, fetch_external_intent
+from server.services import intent_service
 from server.utils.csv_parser import MAX_CSV_BYTES, parse_phantom_csv
 
 
@@ -113,8 +113,8 @@ async def import_leads(account: Account, file: Annotated[UploadFile, File()]) ->
 async def sync_leads(account: Account) -> dict[str, int]:
     """Sincroniza a fonte configurada sem modificar a autenticação."""
     try:
-        leads = await fetch_external_intent()
-    except IntentServiceError as error:
+        leads = await intent_service.fetch_external_intent()
+    except intent_service.IntentServiceError as error:
         raise HTTPException(error.status_code, str(error)) from None
     saved = await run_in_threadpool(_save_leads, account['id'], leads)
     return {'imported': len(saved)}

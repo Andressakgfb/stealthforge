@@ -1,7 +1,9 @@
 """Consulta assíncrona a uma fonte externa configurada no servidor."""
 import asyncio
+import ipaddress
 import json
 import os
+import socket
 import time
 from collections import deque
 from copy import deepcopy
@@ -27,6 +29,24 @@ class IntentServiceError(Exception):
         self.status_code = status_code
 
 
+async def _public_target(url: str) -> tuple[httpx.URL, str, str]:
+    """Valida o DNS e fixa o IP público, preservando Host e o nome do certificado."""
+    try:
+        target = httpx.URL(url)
+        hostname = target.host
+        try:
+            addresses = [ipaddress.ip_address(hostname)]
+        except ValueError:
+            resolved = await asyncio.to_thread(socket.getaddrinfo, hostname, target.port or 443,
+                                               type=socket.SOCK_STREAM)
+            addresses = [ipaddress.ip_address(entry[4][0]) for entry in resolved]
+        if not addresses or any(not address.is_global or address.is_multicast for address in addresses):
+            raise IntentServiceError('A fonte externa deve usar apenas endereços IP públicos.', 503)
+        return target.copy_with(host=str(addresses[0])), hostname, target.netloc.decode('ascii')
+    except (httpx.InvalidURL, OSError, ValueError):
+        raise IntentServiceError('Não foi possível validar o endereço público da fonte externa.', 503) from None
+
+
 async def fetch_external_intent() -> list[Lead]:
     """Busca até três vezes, respeitando cache e 100 chamadas/hora por processo."""
     url, key = os.environ.get('EXTERNAL_API_URL', '').strip(), os.environ.get('EXTERNAL_API_KEY', '').strip()
@@ -43,16 +63,19 @@ async def fetch_external_intent() -> list[Lead]:
         if cached and cached[0] > time.monotonic():
             return deepcopy(cached[1])
         _cache.clear()
-        async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=False, trust_env=False) as client:
             for attempt in range(3):
                 now = time.monotonic()
                 while _attempts and _attempts[0] <= now - 3600:
                     _attempts.popleft()
                 if len(_attempts) >= 100:
                     raise IntentServiceError('Limite da fonte externa: 100 chamadas por hora.', 429)
+                target_url, hostname, host_header = await _public_target(url)
                 _attempts.append(now)
                 try:
-                    async with client.stream('GET', url, headers={'Authorization': f'Bearer {key}', 'Accept': 'application/json'}) as response:
+                    async with client.stream('GET', target_url,
+                                             headers={'Authorization': f'Bearer {key}', 'Accept': 'application/json', 'Host': host_header},
+                                             extensions={'sni_hostname': hostname}) as response:
                         if response.status_code == 429 or response.status_code >= 500:
                             raise IntentServiceError('Fonte externa temporariamente indisponível.')
                         if not 200 <= response.status_code < 300:
