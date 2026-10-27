@@ -120,7 +120,8 @@ def cloak_video(input_path, output_path, level="normal", cover_image_path=None):
     vf = (f"crop=iw-{crop * 2}:ih-{crop * 2}:{crop}:{crop},"
           f"eq=brightness={_signed(jitter)}:contrast={1 + _signed(jitter)},"
           f"scale={scaled_w}:{scaled_h},pad=max(iw\\,{width}):max(ih\\,{height}):(ow-iw)/2:(oh-ih)/2,"
-          f"crop={width}:{height},setsar=1,setpts=PTS-STARTPTS,fps={fps},"
+          # Keep timestamps continuous when FFmpeg reinitializes at a cover boundary.
+          f"crop={width}:{height},setsar=1,fps={fps},"
           # Extra tail is trimmed by -t, covering frame-rate rounding at EOF.
           f"tpad=start_mode=clone:start_duration={pad}:stop_mode=clone:stop_duration={pad + 1}")
     args = ["-y", "-i", str(input_path)]
@@ -135,9 +136,9 @@ def cloak_video(input_path, output_path, level="normal", cover_image_path=None):
     args += ["-filter_complex", graph, "-map", "[v]"]
     if re.search(r"^\s*Stream #.*Audio:", info, re.MULTILINE):
         args += ["-map", "0:a:0", "-af",
-                 f"asetpts=PTS-STARTPTS,adelay={pad * 1000}:all=1,apad=pad_dur={pad}",
+                 f"adelay={pad * 1000}:all=1,apad=pad_dur={pad}",
                  "-c:a", "aac", "-b:a", "128k"]
-    args += ["-t", str(duration + 2 * pad), "-c:v", "libx264", "-preset", "fast",
+    args += ["-t", str(duration + 2 * pad), "-c:v", "libx264", "-preset", "veryfast",
              "-crf", str(random.randint(*crf)), "-pix_fmt", "yuv420p", *_metadata()]
     with tempfile.TemporaryDirectory(prefix="_tmp_cloak_", dir=Path(output_path).parent) as folder:
         temp = str(Path(folder) / "video.mp4")
