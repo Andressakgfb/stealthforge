@@ -430,6 +430,13 @@
     .modal-overlay {
       position: fixed;
       inset: 0;
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      max-height: none;
+      margin: 0;
+      border: 0;
+      color: inherit;
       background: rgba(0, 0, 0, 0.75);
       backdrop-filter: blur(8px);
       display: none;
@@ -441,6 +448,8 @@
       overflow-x: hidden;
       overscroll-behavior: contain;
     }
+
+    .modal-overlay[open] { display: flex; }
 
     .modal-content {
       background: #0F141F;
@@ -515,6 +524,9 @@
     }
 
     .dropzone {
+      width: 100%;
+      font: inherit;
+      color: inherit;
       border: 2px dashed rgba(56, 186, 255, 0.2);
       border-radius: 12px;
       padding: 34px 20px;
@@ -611,7 +623,7 @@
           <span class="pulse-dot"></span>
           Servidor online
         </div>
-        <button class="btn-new" onclick="openModal('image')">
+        <button class="btn-new" onclick="openModal('image', this)">
           <i data-lucide="plus" style="width: 18px; height: 18px;"></i>
           Nova camuflagem
         </button>
@@ -670,13 +682,13 @@
       <section>
         <h2 id="tools" class="section-title">Central de Ferramentas</h2>
         <div class="tools-grid">
-          <button type="button" class="tool-card" onclick="openModal('studio')">
+          <button type="button" class="tool-card" onclick="openModal('studio', this)">
             <div class="tool-icon" style="color:var(--gold);"><i data-lucide="sparkles"></i></div>
             <div class="tool-info"><h3>Estúdio Criativo IA</h3><p>Dê vida às suas imagens.</p></div>
             <i data-lucide="chevron-right" class="chevron-arrow"></i>
           </button>
           
-          <button type="button" class="tool-card" onclick="openModal('video')">
+          <button type="button" class="tool-card" onclick="openModal('video', this)">
             <div class="tool-icon" style="color: var(--blue);">
               <i data-lucide="video"></i>
             </div>
@@ -687,7 +699,7 @@
             <i data-lucide="chevron-right" class="chevron-arrow"></i>
           </button>
 
-          <button type="button" class="tool-card" onclick="openModal('image')">
+          <button type="button" class="tool-card" onclick="openModal('image', this)">
             <div class="tool-icon" style="color: var(--gold);">
               <i data-lucide="image"></i>
             </div>
@@ -698,7 +710,7 @@
             <i data-lucide="chevron-right" class="chevron-arrow"></i>
           </button>
 
-          <button type="button" class="tool-card" onclick="openModal('cloner')">
+          <button type="button" class="tool-card" onclick="openModal('cloner', this)">
             <div class="tool-icon" style="color: var(--gold);">
               <i data-lucide="copy"></i>
             </div>
@@ -709,7 +721,7 @@
             <i data-lucide="chevron-right" class="chevron-arrow"></i>
           </button>
 
-          <button type="button" class="tool-card" onclick="openModal('text')">
+          <button type="button" class="tool-card" onclick="openModal('text', this)">
             <div class="tool-icon" style="color: var(--gold);">
               <i data-lucide="type"></i>
             </div>
@@ -720,7 +732,7 @@
             <i data-lucide="chevron-right" class="chevron-arrow"></i>
           </button>
 
-          <button type="button" class="tool-card" onclick="openModal('metadata')">
+          <button type="button" class="tool-card" onclick="openModal('metadata', this)">
             <div class="tool-icon" style="color: var(--blue);">
               <i data-lucide="settings"></i>
             </div>
@@ -731,7 +743,7 @@
             <i data-lucide="chevron-right" class="chevron-arrow"></i>
           </button>
 
-          <button type="button" class="tool-card" onclick="openModal('compliance')">
+          <button type="button" class="tool-card" onclick="openModal('compliance', this)">
             <div class="tool-icon" style="color: var(--blue);">
               <i data-lucide="shield-check"></i>
             </div>
@@ -742,7 +754,7 @@
             <i data-lucide="chevron-right" class="chevron-arrow"></i>
           </button>
 
-          <button type="button" class="tool-card" onclick="openModal('cloaker')">
+          <button type="button" class="tool-card" onclick="openModal('cloaker', this)">
             <div class="tool-icon" style="color: var(--danger);">
               <i data-lucide="eye-off"></i>
             </div>
@@ -752,7 +764,7 @@
             </div>
             <i data-lucide="chevron-right" class="chevron-arrow"></i>
           </button>
-          <button type="button" class="tool-card" onclick="openModal('script')">
+          <button type="button" class="tool-card" onclick="openModal('script', this)">
             <div class="tool-icon" style="color: var(--gold);">
               <i data-lucide="mic"></i>
             </div>
@@ -784,21 +796,22 @@
   </div>
 
   <!-- Unified Dynamic Modal -->
-  <div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+  <dialog class="modal-overlay" id="modal-overlay" aria-labelledby="modal-title" aria-modal="true" onclick="handleOverlayClick(event)">
     <div class="modal-content" id="modal-box">
       <div class="modal-header">
         <h3 class="modal-title" id="modal-title">Título da Ferramenta</h3>
-        <button class="close-modal" aria-label="Fechar ferramenta" onclick="closeModal()">
+        <button type="button" class="close-modal" aria-label="Fechar ferramenta" onclick="closeModal()" autofocus>
           <i data-lucide="x" style="width: 20px; height: 20px;"></i>
         </button>
       </div>
 
       <div id="modal-body"></div>
     </div>
-  </div>
+  </dialog>
 
   <script>
     let currentLevel = 'normal';
+    let modalTrigger = null;
 
     function setLevel(lvl) {
       currentLevel = lvl;
@@ -883,10 +896,11 @@
 
     loadStats();
 
-    function openModal(type) {
+    function openModal(type, trigger = document.activeElement) {
       const overlay = document.getElementById('modal-overlay');
       const title = document.getElementById('modal-title');
       const body = document.getElementById('modal-body');
+      modalTrigger = trigger;
 
       currentLevel = 'normal';
 
@@ -898,22 +912,22 @@
             <button type="button" class="level-btn active" id="btn-lvl-normal" onclick="setLevel('normal')">02 Normal</button>
             <button type="button" class="level-btn" id="btn-lvl-agressiva" onclick="setLevel('agressiva')">03 Agressiva</button>
           </div>
-          <div class="dropzone" onclick="document.getElementById('file-input').click()">
+          <button type="button" class="dropzone" onclick="document.getElementById('file-input').click()">
             <i data-lucide="upload-cloud" style="width: 32px; height: 32px; color: var(--purple);"></i>
             <p><strong style="color: #FFF;">Clique ou arraste uma imagem aqui</strong><br>(JPG, PNG, WEBP)</p>
-            <input type="file" id="file-input" accept="image/*" style="display: none;" onchange="handleFileSelected(this, 'image')">
-          </div>
+          </button>
+          <input type="file" id="file-input" accept="image/*" style="display: none;" onchange="handleFileSelected(this, 'image')">
           <div id="process-result" class="result-card"></div>
         `;
       } else if (type === 'video') {
         title.innerText = "Camuflador de Vídeo & Gerador de Capa (Meta & TikTok)";
         body.innerHTML = `
           <!-- Video Dropzone -->
-          <div class="dropzone" id="video-dropzone" onclick="document.getElementById('video-file-input').click()" style="margin-bottom: 16px;">
+          <button type="button" class="dropzone" id="video-dropzone" onclick="document.getElementById('video-file-input').click()" style="margin-bottom: 16px;">
             <i data-lucide="video" style="width: 36px; height: 36px; color: var(--blue);"></i>
             <p id="video-file-label"><strong style="color: #FFF;">Clique ou arraste seu vídeo aqui</strong><br>(MP4, MOV)</p>
-            <input type="file" id="video-file-input" accept="video/*" style="display: none;" onchange="handleVideoFileChange(this)">
-          </div>
+          </button>
+          <input type="file" id="video-file-input" accept="video/*" style="display: none;" onchange="handleVideoFileChange(this)">
 
           <!-- Cover Mode Selection -->
           <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px; margin-bottom: 16px;">
@@ -937,10 +951,10 @@
               <div>
                 <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Selecione ou digite o Nicho:</label>
                 <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;">
-                  <span class="status-badge" style="cursor: pointer; padding: 4px 10px; font-size: 11px;" onclick="setNichePreset('Emagrecimento / Perda de Peso')">🔥 Emagrecimento</span>
-                  <span class="status-badge" style="cursor: pointer; padding: 4px 10px; font-size: 11px;" onclick="setNichePreset('Renda Extra / Marketing Digital')">💸 Renda Extra</span>
-                  <span class="status-badge" style="cursor: pointer; padding: 4px 10px; font-size: 11px;" onclick="setNichePreset('Relacionamento & Conquista')">💘 Relacionamento</span>
-                  <span class="status-badge" style="cursor: pointer; padding: 4px 10px; font-size: 11px;" onclick="setNichePreset('Estética & Beleza Facial')">✨ Estética</span>
+                  <button type="button" class="status-badge" style="cursor: pointer; padding: 4px 10px; font-size: 11px;" onclick="setNichePreset('Emagrecimento / Perda de Peso')">🔥 Emagrecimento</button>
+                  <button type="button" class="status-badge" style="cursor: pointer; padding: 4px 10px; font-size: 11px;" onclick="setNichePreset('Renda Extra / Marketing Digital')">💸 Renda Extra</button>
+                  <button type="button" class="status-badge" style="cursor: pointer; padding: 4px 10px; font-size: 11px;" onclick="setNichePreset('Relacionamento & Conquista')">💘 Relacionamento</button>
+                  <button type="button" class="status-badge" style="cursor: pointer; padding: 4px 10px; font-size: 11px;" onclick="setNichePreset('Estética & Beleza Facial')">✨ Estética</button>
                 </div>
                 <input type="text" id="niche-input" class="input-textarea" style="min-height: 40px; padding: 8px 12px;" placeholder="Ex: Emagrecimento, Tirzepatida, Renda Extra, etc.">
               </div>
@@ -963,27 +977,32 @@
 
             <!-- Upload Cover Options -->
             <div id="cover-upload-box" style="display: none;">
-              <div class="dropzone" onclick="document.getElementById('cover-file-input').click()" style="padding: 18px 12px;">
+              <button type="button" class="dropzone" onclick="document.getElementById('cover-file-input').click()" style="padding: 18px 12px;">
                 <i data-lucide="image-plus" style="width: 26px; height: 26px; color: var(--purple);"></i>
                 <p id="cover-file-label"><strong style="color: #FFF;">Selecionar imagem de capa</strong> (JPG, PNG)</p>
-                <input type="file" id="cover-file-input" accept="image/*" style="display: none;" onchange="handleCoverFileChange(this)">
-              </div>
+              </button>
+              <input type="file" id="cover-file-input" accept="image/*" style="display: none;" onchange="handleCoverFileChange(this)">
             </div>
           </div>
 
           <!-- Timeline Padding Switch (Anti-Meta 10 Minutos) -->
           <div style="background: rgba(37, 211, 102, 0.08); border: 1px solid rgba(37, 211, 102, 0.3); border-radius: 16px; padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
             <div style="flex: 1;">
-              <span style="font-size: 13px; font-weight: 800; color: #FFF; display: flex; align-items: center; gap: 6px;">
+              <label for="toggle-timeline-padding" style="font-size: 13px; font-weight: 800; color: #FFF; display: flex; align-items: center; gap: 6px;">
                 <i data-lucide="zap" style="width: 16px; height: 16px; color: #25D366;"></i>
                 Estender duração com imagem e silêncio
                 <span class="status-badge" style="background: rgba(37,211,102,0.2); color: #25D366; font-size: 10px; padding: 2px 6px;">Opcional</span>
-              </span>
+              </label>
               <p style="font-size: 11px; color: #CBD5E1; margin-top: 3px; line-height: 1.4;">
                 Adiciona uma introdução e um trecho final estático. Aumenta a duração e o arquivo; não garante aprovação nem evita bloqueios.
               </p>
             </div>
-            <input type="checkbox" id="toggle-timeline-padding" style="width: 22px; height: 22px; accent-color: #25D366; cursor: pointer;">
+            <input type="checkbox" id="toggle-timeline-padding" aria-controls="extension-options" onchange="toggleVideoExtension(this.checked)" style="width: 22px; height: 22px; accent-color: #25D366; cursor: pointer;">
+          </div>
+          <div id="extension-options" hidden style="margin-bottom: 16px;">
+            <label for="extension-minutes">Tempo adicional (minutos)</label>
+            <input type="number" id="extension-minutes" class="input-textarea" style="min-height: 44px;" min="1" max="30" step="1" value="10" required disabled aria-describedby="extension-help">
+            <p id="extension-help" style="font-size: 12px; color: var(--text-muted);">De 1 a 30 minutos adicionais ao vídeo original, incluindo a introdução de 4 segundos.</p>
           </div>
 
           <!-- Submit Action Button -->
@@ -1023,11 +1042,11 @@
       } else if (type === 'metadata') {
         title.innerText = "Limpador de Metadados EXIF & GPS";
         body.innerHTML = `
-          <div class="dropzone" onclick="document.getElementById('file-input-m').click()">
+          <button type="button" class="dropzone" onclick="document.getElementById('file-input-m').click()">
             <i data-lucide="trash-2" style="width: 32px; height: 32px; color: #94A3B8;"></i>
             <p><strong style="color: #FFF;">Arraste foto ou vídeo para limpeza</strong></p>
-            <input type="file" id="file-input-m" style="display: none;" onchange="handleFileSelected(this, 'metadata')">
-          </div>
+          </button>
+          <input type="file" id="file-input-m" style="display: none;" onchange="handleFileSelected(this, 'metadata')">
           <div id="process-result" class="result-card"></div>
         `;
       } else if (type === 'compliance') {
@@ -1080,20 +1099,42 @@
         return;
       }
 
-      overlay.style.display = 'flex';
-      overlay.scrollTop = 0;
       document.body.classList.add('modal-open');
       lucide.createIcons();
+      overlay.showModal();
+      overlay.scrollTop = 0;
     }
 
     function closeModal() {
-      document.getElementById('modal-overlay').style.display = 'none';
+      document.getElementById('modal-overlay').close();
       document.body.classList.remove('modal-open');
+      modalTrigger?.focus();
     }
 
     function handleOverlayClick(e) {
       if (e.target.id === 'modal-overlay') closeModal();
     }
+
+    document.getElementById('modal-overlay').addEventListener('cancel', event => {
+      event.preventDefault();
+      closeModal();
+    });
+
+    document.getElementById('modal-overlay').addEventListener('close', event => {
+      if (!event.currentTarget.open) document.body.classList.remove('modal-open');
+    });
+
+    document.getElementById('modal-overlay').addEventListener('keydown', event => {
+      if (event.key !== 'Tab') return;
+      const controls = [...event.currentTarget.querySelectorAll('button, input, select, textarea, a[href], [tabindex]')]
+        .filter(element => element.tabIndex >= 0 && !element.disabled && element.getClientRects().length);
+      const first = controls[0], last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first.focus();
+      }
+    });
 
     document.getElementById('modal-overlay').addEventListener('wheel', function (e) {
       e.stopPropagation();
@@ -1103,6 +1144,11 @@
     let selectedVideoFile = null;
     let selectedCoverFile = null;
     let generatedCoverFilename = '';
+
+    function toggleVideoExtension(enabled) {
+      document.getElementById('extension-options').hidden = !enabled;
+      document.getElementById('extension-minutes').disabled = !enabled;
+    }
 
     function setCoverMode(mode) {
       currentCoverMode = mode;
@@ -1195,15 +1241,18 @@
       }
 
       const resultBox = document.getElementById('process-result');
-      const padChecked = document.getElementById('toggle-timeline-padding') ? document.getElementById('toggle-timeline-padding').checked : true;
+      const padChecked = document.getElementById('toggle-timeline-padding')?.checked || false;
+      const extension = document.getElementById('extension-minutes');
+      if (padChecked && (!extension || !extension.reportValidity())) return;
       resultBox.style.display = 'block';
-      resultBox.innerHTML = `<p style="font-size: 13px; color: var(--text-muted);">⏳ Processando vídeo em modo <strong>${currentLevel.toUpperCase()}</strong>${padChecked ? ' com padding. Isso pode levar 1 a 2 minutos' : ''}...</p>`;
+      resultBox.innerHTML = `<p style="font-size: 13px; color: var(--text-muted);">⏳ Processando vídeo em modo <strong>${currentLevel.toUpperCase()}</strong>${padChecked ? ' com ' + extension.value + ' minuto(s) adicionais' : ''}...</p>`;
 
       const formData = new FormData();
       formData.append('file', selectedVideoFile);
       formData.append('level', currentLevel);
       formData.append('cover_mode', currentCoverMode);
       formData.append('timeline_padding', padChecked ? 'true' : 'false');
+      if (padChecked) formData.append('extension_minutes', extension.value);
 
       if (currentCoverMode === 'ai') {
         const niche = document.getElementById('niche-input') ? document.getElementById('niche-input').value : 'Emagrecimento';
