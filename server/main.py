@@ -501,7 +501,8 @@ def get_font(size: int, bold: bool = True):
         "C:/Windows/Fonts/arialbd.ttf" if bold else "C:/Windows/Fonts/arial.ttf",
         "C:/Windows/Fonts/seguiemj.ttf",
         "C:/Windows/Fonts/tahomabd.ttf" if bold else "C:/Windows/Fonts/tahoma.ttf",
-        "C:/Windows/Fonts/verdana.ttf"
+        "C:/Windows/Fonts/verdana.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     ]
     for p in font_paths:
         if os.path.exists(p):
@@ -509,10 +510,17 @@ def get_font(size: int, bold: bool = True):
                 return ImageFont.truetype(p, size)
             except Exception:
                 pass
-    return ImageFont.load_default()
+    return ImageFont.load_default(size=size)
 
 def _jitter_color(color, spread=18):
     return tuple(max(0, min(255, c + random.randint(-spread, spread))) for c in color)
+
+
+def _cover_text_color(background):
+    channels = [value / 255 for value in background]
+    luminance = sum((value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4) * weight
+                    for value, weight in zip(channels, (0.2126, 0.7152, 0.0722)))
+    return (0, 0, 0) if luminance > 0.179 else (255, 255, 255)
 
 
 def _centered_text(draw, text, y, font, fill, canvas_w=1080):
@@ -651,12 +659,12 @@ def create_niche_cover_image(niche: str, custom_text: str = "") -> Image.Image:
     layout = random.choice(["play", "number", "quote", "bar"])
     seed_mark = f"v{random.randint(11, 99)}.{random.randint(10, 99)}"
 
-    font_badge = get_font(random.choice([26, 28, 30]), bold=True)
-    font_tag = get_font(random.choice([22, 24, 26]), bold=True)
-    font_h1 = get_font(random.choice([44, 48, 52]), bold=True)
-    font_h2 = get_font(random.choice([38, 42, 46]), bold=True)
-    font_sub = get_font(random.choice([24, 26, 28]), bold=False)
-    font_btn = get_font(random.choice([26, 28, 30]), bold=True)
+    font_badge = get_font(random.choice([34, 36, 38]), bold=True)
+    font_tag = get_font(34, bold=True)
+    font_h1 = get_font(random.choice([72, 76, 80]), bold=True)
+    font_h2 = get_font(random.choice([54, 58, 62]), bold=True)
+    font_sub = get_font(38, bold=False)
+    font_btn = get_font(42, bold=True)
     font_mark = get_font(18, bold=False)
 
     img = Image.new("RGB", (w, h), color=bg_bot)
@@ -680,8 +688,8 @@ def create_niche_cover_image(niche: str, custom_text: str = "") -> Image.Image:
         draw.ellipse([cx - rr // 2, cy - rr // 2, cx + rr // 2, cy + rr // 2], outline=_jitter_color(accent_light, 30), width=1)
 
     inset = random.randint(40, 80)
-    top_m = random.randint(220, 360)
-    bot_m = random.randint(220, 360)
+    top_m = random.randint(180, 240)
+    bot_m = random.randint(180, 240)
     card = [inset, top_m, w - inset, h - bot_m]
     radius = random.choice([28, 36, 44, 52])
     draw.rounded_rectangle(card, radius=radius, fill=card_fill, outline=(255, 255, 255), width=random.choice([1, 2]))
@@ -692,12 +700,14 @@ def create_niche_cover_image(niche: str, custom_text: str = "") -> Image.Image:
     bx1 = (w - badge_w) // 2
     by1 = card[1] + random.randint(48, 80)
     badge_fill = (255, 255, 255) if random.random() < 0.7 else accent
-    badge_ink = (10, 15, 25) if badge_fill == (255, 255, 255) else (255, 255, 255)
+    badge_ink = _cover_text_color(badge_fill)
+    while draw.textlength(cat_badge, font=font_badge) > badge_w - 48:
+        font_badge = get_font(font_badge.size - 1, bold=True)
     draw.rounded_rectangle([bx1, by1, bx1 + badge_w, by1 + badge_h], radius=badge_h // 2, fill=badge_fill, outline=accent_light, width=2)
     _centered_text(draw, cat_badge, by1 + 16, font_badge, badge_ink, w)
     _centered_text(draw, f"✓ {tag_text}", by1 + badge_h + 18, font_tag, accent_light, w)
 
-    mark_y = h // 2 - random.randint(40, 90)
+    mark_y = card[1] + 360
     if layout == "play":
         pr = random.randint(88, 120)
         draw.ellipse([w // 2 - pr, mark_y - pr, w // 2 + pr, mark_y + pr], fill=accent, outline=(255, 255, 255), width=5)
@@ -715,15 +725,15 @@ def create_niche_cover_image(niche: str, custom_text: str = "") -> Image.Image:
         draw.ellipse([w // 2 - 18, mark_y - 18, w // 2 + 18, mark_y + 18], fill=(255, 255, 255), outline=accent, width=3)
 
     text_y = mark_y + 150
-    text_y = _wrapped_center(draw, headline_1, text_y, font_h1, (255, 255, 255), 880, w, 56)
-    text_y = _wrapped_center(draw, headline_2, text_y + 8, font_h2, accent_light, 900, w, 50)
-    _wrapped_center(draw, sub_text, text_y + 16, font_sub, (180, 195, 215), 860, w, 36)
+    text_y = _wrapped_center(draw, headline_1, text_y, font_h1, (255, 255, 255), 880, w, 94)
+    text_y = _wrapped_center(draw, headline_2, text_y + 8, font_h2, accent_light, 900, w, 74)
+    _wrapped_center(draw, sub_text, text_y + 16, font_sub, (210, 220, 235), 860, w, 50)
 
     btn_w, btn_h = random.randint(680, 800), random.randint(84, 100)
     btn_x = (w - btn_w) // 2
     btn_y = card[3] - random.randint(120, 160)
     btn_fill = (255, 255, 255) if random.random() < 0.6 else accent
-    btn_ink = (0, 0, 0) if btn_fill == (255, 255, 255) else (255, 255, 255)
+    btn_ink = _cover_text_color(btn_fill)
     draw.rounded_rectangle([btn_x, btn_y, btn_x + btn_w, btn_y + btn_h], radius=random.choice([20, 26, 32]), fill=btn_fill)
     _centered_text(draw, btn_label, btn_y + 28, font_btn, btn_ink, w)
     _centered_text(draw, seed_mark, card[3] - 36, font_mark, (120, 130, 145), w)
@@ -798,12 +808,10 @@ def create_white_padding_cover(niche: str = "", custom_text: str = "") -> Image.
     draw.text(((w - (h1_b[2] - h1_b[0])) // 2, icon_cy + 100), h1_txt, font=font_h1, fill=(15, 23, 42))
     
     h2_txt = custom_text.upper() if custom_text else "FALE DIRETAMENTE COM NOSSA EQUIPE"
-    h2_b = draw.textbbox((0, 0), h2_txt, font=font_h2)
-    draw.text(((w - (h2_b[2] - h2_b[0])) // 2, icon_cy + 155), h2_txt, font=font_h2, fill=(37, 211, 102))
+    text_y = _wrapped_center(draw, h2_txt, icon_cy + 155, font_h2, (37, 211, 102), 580, w, 34)
     
     sub_txt = "Toque no botão abaixo para tirar dúvidas e conferir condições"
-    sub_b = draw.textbbox((0, 0), sub_txt, font=font_sub)
-    draw.text(((w - (sub_b[2] - sub_b[0])) // 2, icon_cy + 220), sub_txt, font=font_sub, fill=(100, 116, 139))
+    _wrapped_center(draw, sub_txt, text_y + 18, font_sub, (100, 116, 139), 580, w, 28)
     
     # Botão CTA Verde WhatsApp
     btn_w, btn_h = 560, 76
