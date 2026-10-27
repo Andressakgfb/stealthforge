@@ -2,6 +2,34 @@
 
 Aplicativo FastAPI para preparar imagens, videos e textos e usar o Estudio Criativo IA.
 
+## Camuflagem de audio e video
+
+`POST /api/camouflage/audio` recebe multipart com `file` (MP3/WAV/AAC/OGG,
+ate 50 MiB) e `level` (`basica`, `normal` ou `agressiva`; padrao `normal`).
+Retorna AAC em M4A, com `status`, `filename`, `download_url`, `new_hash` (SHA-256)
+e `level`.
+
+`POST /api/camouflage/video` continua recebendo os parametros existentes,
+incluindo `level`, `cover_mode`, `cover_file`, `generated_cover`, `timeline_padding`,
+`padding_seconds` e `extension_minutes`. O novo `cloak_level` e independente de
+`level`, aceita os mesmos tres niveis e tem padrao `normal`. `cover_image` tambem
+aceita uma capa enviada, como alias de `cover_file` com `cover_mode=upload`.
+Aceita MP4/MOV/WEBM ate 300 MiB. O motor roda depois da capa e extensao;
+os campos antigos da resposta continuam presentes, com `new_hash` como alias
+adicional de `new_sha256`. A saida e H.264/AAC em MP4.
+
+Os motores removem metadados descritivos globais, de faixas e capitulos;
+campos estruturais do container continuam necessarios para reproduzir o arquivo.
+As variacoes pequenas alteram o hash binario, sem garantia de imperceptibilidade
+ou de impedir reconhecimento por sistemas de terceiros. A camuflagem isolada
+mantem a variacao de duracao abaixo de 5%; a extensao solicitada pelo usuario
+continua sendo aplicada antes dela. Cada subprocesso FFmpeg tem limite de 300s.
+Arquivos, atividades e contadores diarios respeitam o isolamento do cliente.
+
+Testes com fixtures sinteticas e ffprobe (apenas para verificacao, sem nova
+dependencia de execucao): adicione `ffprobe` ao PATH ou defina `FFPROBE_EXE`,
+depois execute `python -m unittest discover -s tests -p test_media_cloak.py`.
+
 ## Portal de clientes
 
 O portal exige login. Clientes podem se cadastrar e conhecer a interface com acesso

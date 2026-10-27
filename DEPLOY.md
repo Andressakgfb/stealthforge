@@ -126,7 +126,8 @@ server {
     listen 80;
     server_name cads.seudominio.com;
     server_tokens off;
-    client_max_body_size 100m;
+    # 300 MiB de video + capa e envelope multipart.
+    client_max_body_size 325m;
 
     location / {
         proxy_pass http://127.0.0.1:8888;
