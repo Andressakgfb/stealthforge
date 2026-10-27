@@ -8,6 +8,10 @@ import json
 import sqlite3
 import tempfile
 import secrets
+import logging
+import shutil
+from pathlib import Path
+from starlette.concurrency import run_in_threadpool
 from contextlib import closing
 import urllib.request
 import urllib.parse
@@ -19,6 +23,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from PIL import Image, ImageEnhance, ImageDraw, ImageFont, ImageOps, UnidentifiedImageError
 from server.security import RequestGuardMiddleware, SecurityHeadersMiddleware
 from server import accounts
+from server import media_cloak
 
 app = FastAPI(title="Camouflage Ads API - CADS Pro", version="3.0.0-ENTERPRISE")
 
@@ -52,6 +57,7 @@ def stats_state():
         return STATS
     return CUSTOMER_STATS.setdefault(customer['id'], {
         'processed_today': 0, 'protected_files': 0, 'plan_used': 0,
+        'audio_cloaked_today': 0, 'video_cloaked_today': 0,
         'plan_limit': PLAN_LIMIT_DEFAULT, 'recent_activities': [],
     })
 
@@ -153,6 +159,8 @@ os.makedirs(PROCESSED_DIR, exist_ok=True)
 os.makedirs(PUBLIC_DIR, exist_ok=True)
 
 STATS = {
+    "audio_cloaked_today": 0,
+    "video_cloaked_today": 0,
     "processed_today": 0,
     "protected_files": 0,
     "plan_used": 0,
@@ -220,6 +228,10 @@ def get_stats():
     data.update(processed_today=sum(d.date() == now.date() for d in dates),
                 protected_files=len(saved),
                 plan_used=sum((d.year, d.month) == (now.year, now.month) for d in dates))
+    for kind in ("audio", "video"):
+        data[f"{kind}_cloaked_today"] = sum(
+            date.date() == now.date() and item["filename"].startswith(f"cads_cloak_{kind}_")
+            for date, item in zip(dates, saved))
     with closing(sqlite3.connect(database_path())) as conn:
         hidden = {row[0] for row in conn.execute('SELECT filename FROM hidden_activities')}
     mem = [a for a in (stats_state().get("recent_activities") or [])
@@ -319,6 +331,59 @@ async def camouflage_image(
         raise HTTPException(400, "Imagem invalida.") from None
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+async def _save_cloak_upload(upload, path, limit):
+    size = 0
+    with open(path, "wb") as handle:
+        while chunk := await upload.read(1024 * 1024):
+            size += len(chunk)
+            if size > limit:
+                raise HTTPException(413, f"O arquivo deve ter no maximo {limit // (1024 * 1024)} MB.")
+            handle.write(chunk)
+    if not size:
+        raise HTTPException(400, "Arquivo vazio.")
+
+
+@app.post("/api/camouflage/audio")
+async def camouflage_audio(file: UploadFile = File(...), level: str = Form("normal")):
+    if level not in media_cloak.LEVELS:
+        raise HTTPException(400, "Nivel de camuflagem invalido.")
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix not in {".mp3", ".wav", ".aac", ".ogg"}:
+        raise HTTPException(400, "Formato de midia invalido.")
+    filename = f"cads_cloak_audio_{level}_{secrets.token_hex(8)}.m4a"
+    output = Path(processed_directory()) / filename
+    success = False
+    try:
+        with tempfile.TemporaryDirectory(prefix="_tmp_cloak_") as folder:
+            source = Path(folder) / ("input" + suffix)
+            await _save_cloak_upload(file, source, 50 * 1024 * 1024)
+            await run_in_threadpool(media_cloak.cloak_audio, source, output, level)
+        digest = hashlib.sha256()
+        with open(output, "rb") as handle:
+            while chunk := handle.read(1024 * 1024):
+                digest.update(chunk)
+        state = stats_state()
+        for key in ("processed_today", "protected_files", "plan_used", "audio_cloaked_today"):
+            state[key] = (state.get(key) or 0) + 1
+        push_activity(file.filename, "audio", f"Camuflado · {level.capitalize()}", "music", filename)
+        success = True
+        return {"status": "success", "filename": filename,
+                "download_url": f"/api/download/{filename}", "new_hash": digest.hexdigest(), "level": level}
+    except subprocess.TimeoutExpired:
+        raise HTTPException(504, "O processamento excedeu 300 segundos.") from None
+    except media_cloak.InvalidMedia:
+        raise HTTPException(400, "Arquivo de midia invalido ou nao suportado.") from None
+    except HTTPException:
+        raise
+    except Exception:
+        logging.getLogger(__name__).exception("Erro na camuflagem de audio")
+        raise HTTPException(500, "Nao foi possivel processar a midia.") from None
+    finally:
+        if not success:
+            output.unlink(missing_ok=True)
+        await file.close()
+
 
 import subprocess
 import imageio_ffmpeg
@@ -769,22 +834,30 @@ async def camouflage_video(
     timeline_padding: bool = Form(False),
     padding_seconds: int = Form(610), # 10m 10s
     extension_minutes: int | None = Form(None),
-    cover_file: UploadFile = File(None)
+    cover_file: UploadFile = File(None),
+    cover_image: UploadFile = File(None),
+    cloak_level: str = Form("normal")
 ):
+    if cloak_level not in media_cloak.LEVELS:
+        raise HTTPException(400, "Nivel de camuflagem invalido.")
+    if Path(file.filename or "").suffix.lower() not in {".mp4", ".mov", ".webm"}:
+        raise HTTPException(400, "Use MP4, MOV ou WEBM.")
     if cover_mode not in {"none", "ai", "upload"} or not 10 <= padding_seconds <= 1800:
         raise HTTPException(400, "Confira o modo de capa e a duracao solicitada (10 a 1800 segundos).")
     if timeline_padding and extension_minutes is not None and not 1 <= extension_minutes <= 30:
         raise HTTPException(400, "Escolha de 1 a 30 minutos adicionais para o video.")
+    if cover_image is not None:
+        cover_file = cover_image
+        cover_mode = "upload"
+    raw_video_path = out_path = None
+    created_cover = None
+    completed = False
     try:
-        content = await file.read(100 * 1024 * 1024 + 1)
-        if len(content) > 100 * 1024 * 1024:
-            raise HTTPException(413, "O video deve ter no maximo 100 MB.")
         raw_video_filename = f"_tmp_raw_{secrets.token_hex(8)}.mp4"
         raw_video_path = os.path.join(processed_directory(), raw_video_filename)
-        with open(raw_video_path, "wb") as f:
-            f.write(content)
+        await _save_cloak_upload(file, raw_video_path, 300 * 1024 * 1024)
             
-        out_filename = f"cads_video_{secrets.token_hex(8)}.mp4"
+        out_filename = f"cads_cloak_video_{cloak_level}_{secrets.token_hex(8)}.mp4"
         out_path = os.path.join(processed_directory(), out_filename)
         
         ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
@@ -810,13 +883,20 @@ async def camouflage_video(
             cover_filename = f"cads_capa_ia_{int(time.time())}_{random.randint(1000,9999)}.jpg"
             cover_path = os.path.join(processed_directory(), cover_filename)
             cover_img.save(cover_path, format="JPEG", quality=96)
+            created_cover = cover_path
             cover_info = {"type": "ai_generated", "filename": cover_filename, "download_url": f"/api/download/{cover_filename}", "niche": niche or "emagrecimento"}
         elif not cover_path and cover_mode == "upload" and cover_file:
-            cover_content = await cover_file.read()
-            cover_img = Image.open(io.BytesIO(cover_content)).convert("RGB")
+            cover_content = await cover_file.read(20 * 1024 * 1024 + 1)
+            if len(cover_content) > 20 * 1024 * 1024:
+                raise HTTPException(413, "A capa deve ter no maximo 20 MB.")
+            with Image.open(io.BytesIO(cover_content)) as image:
+                if image.format not in {"JPEG", "PNG", "WEBP"} or image.width * image.height > 25_000_000:
+                    raise HTTPException(400, "Capa invalida: use JPG, PNG ou WEBP de ate 25 megapixels.")
+                cover_img = ImageOps.exif_transpose(image).convert("RGB")
             cover_filename = f"cads_capa_custom_{secrets.token_hex(8)}.jpg"
             cover_path = os.path.join(processed_directory(), cover_filename)
             cover_img.save(cover_path, format="JPEG", quality=96)
+            created_cover = cover_path
             cover_info = {"type": "custom_upload", "filename": cover_filename, "download_url": f"/api/download/{cover_filename}"}
         elif not cover_path and timeline_padding:
             # Gerar Frame White Institucional para o Timeline Padding
@@ -824,6 +904,7 @@ async def camouflage_video(
             cover_filename = f"cads_white_frame_{int(time.time())}_{random.randint(1000,9999)}.jpg"
             cover_path = os.path.join(processed_directory(), cover_filename)
             cover_img.save(cover_path, format="JPEG", quality=95)
+            created_cover = cover_path
             cover_info = {"type": "white_padding_frame", "filename": cover_filename, "download_url": f"/api/download/{cover_filename}"}
 
         # 2. Obter duração do vídeo de entrada
@@ -843,10 +924,9 @@ async def camouflage_video(
 
         # Fallback se timeline padding falhou ou foi desativado
         if not ffmpeg_success and not cover_path:
-            result = run_ffmpeg([ffmpeg_exe, "-y", "-i", raw_video_path,
-                                 "-map", "0", "-c", "copy", "-map_metadata", "-1",
-                                 "-map_chapters", "-1", out_path], timeout=60)
-            ffmpeg_success = result.returncode == 0 and os.path.isfile(out_path)
+            # The final cloak stage converts the container, including VP8/WEBM inputs.
+            shutil.copyfile(raw_video_path, out_path)
+            ffmpeg_success = True
         if not ffmpeg_success:
             if cover_path and os.path.exists(cover_path) and os.path.exists(ffmpeg_exe):
                 try:
@@ -871,6 +951,7 @@ async def camouflage_video(
                 if os.path.isfile(partial):
                     os.remove(partial)
             raise HTTPException(422, "Nao foi possivel processar o video. Confira o formato e tente outro arquivo.")
+        await run_in_threadpool(media_cloak.cloak_video, out_path, out_path, cloak_level)
         actual_duration, _ = probe_media(ffmpeg_exe, out_path)
         if timeline_padding and extension_minutes is not None and abs(actual_duration - probe_duration - extension_minutes * 60) > 2:
             for partial in (raw_video_path, out_path):
@@ -891,6 +972,7 @@ async def camouflage_video(
         stats_state()["processed_today"] += 1
         stats_state()["protected_files"] += 1
         stats_state()["plan_used"] += 1
+        stats_state()["video_cloaked_today"] = stats_state().get("video_cloaked_today", 0) + 1
         push_activity(
             file.filename,
             "video",
@@ -899,6 +981,7 @@ async def camouflage_video(
             out_filename,
         )
             
+        completed = True
         return {
             "status": "success",
             "filename": out_filename,
@@ -907,12 +990,27 @@ async def camouflage_video(
             "duration": f"{actual_duration:.2f} segundos",
             "duration_seconds": actual_duration,
             "new_sha256": new_hash,
+            "new_hash": new_hash,
             "cover": cover_info
         }
     except HTTPException:
         raise
+    except subprocess.TimeoutExpired:
+        raise HTTPException(504, "O processamento excedeu 300 segundos.") from None
+    except media_cloak.InvalidMedia:
+        raise HTTPException(422, "Arquivo de midia invalido ou nao suportado.") from None
+    except (UnidentifiedImageError, Image.DecompressionBombError):
+        raise HTTPException(400, "Imagem de capa invalida.") from None
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        for path in (raw_video_path, out_path if not completed else None,
+                     created_cover if not completed else None):
+            if path and os.path.isfile(path):
+                os.remove(path)
+        await file.close()
+        if cover_file is not None:
+            await cover_file.close()
 
 @app.post("/api/scripts/generate-white-script")
 async def generate_white_script(
