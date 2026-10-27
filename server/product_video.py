@@ -57,6 +57,33 @@ PROVIDERS = {
         "env_key": "FAL_KEY",
         "video_capable": True,
     },
+    "fal_flux_schnell": {
+        "name": "fal.ai Flux Schnell (Imagem)",
+        "model": "flux-schnell",
+        "endpoint": "https://queue.fal.run/fal-ai/flux/schnell",
+        "cost": "~$0.003/imagem (ultra-barato)",
+        "env_key": "FAL_KEY",
+        "video_capable": False,
+        "image_capable": True,
+    },
+    "replicate_flux_dev": {
+        "name": "Replicate Flux Dev (Imagem)",
+        "model": "flux-dev",
+        "endpoint": "https://api.replicate.com/v1/predictions",
+        "cost": "~$0.025/imagem (qualidade top)",
+        "env_key": "REPLICATE_API_TOKEN",
+        "video_capable": False,
+        "image_capable": True,
+    },
+    "replicate_flux_pro": {
+        "name": "Replicate Flux Pro 1.1 (Imagem)",
+        "model": "flux-1.1-pro",
+        "endpoint": "https://api.replicate.com/v1/predictions",
+        "cost": "~$0.04/imagem (premium)",
+        "env_key": "REPLICATE_API_TOKEN",
+        "video_capable": False,
+        "image_capable": True,
+    },
 }
 
 
@@ -69,9 +96,10 @@ def studio_config():
             "name": pinfo["name"],
             "cost": pinfo["cost"],
             "configured": bool(os.environ.get(env_key)),
-            "video_capable": pinfo["video_capable"],
-            "supports_scene": pid != "fal_svd",
-            "supports_aspect_ratio": pid != "fal_svd",
+            "video_capable": pinfo.get("video_capable", False),
+            "image_capable": pinfo.get("image_capable", False),
+            "supports_scene": pid not in ("fal_svd", "fal_flux_schnell", "replicate_flux_dev", "replicate_flux_pro"),
+            "supports_aspect_ratio": pid not in ("fal_svd", "fal_flux_schnell"),
         }
     return {
         "providers": configured_providers,
@@ -329,6 +357,160 @@ def request_video_fal(image_b64, prompt, aspect_ratio, api_key):
         raise HTTPException(502, "A fal.ai retornou uma resposta invalida.") from None
 
 
+
+# === fal.ai Flux Schnell: geracao de imagem (ultra-rapido, ultra-barato) ===
+def request_image_fal_flux_schnell(prompt, api_key):
+    payload = {
+        "prompt": prompt,
+        "image_size": "square_hd",
+        "num_inference_steps": 4,
+        "enable_safety_checker": False,
+    }
+    request = urllib.request.Request(
+        PROVIDERS["fal_flux_schnell"]["endpoint"],
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": f"Key {api_key}"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            submit_result = json.loads(response.read())
+        request_id = submit_result.get("request_id")
+        if not request_id:
+            raise HTTPException(502, "fal.ai nao retornou request_id")
+        status_url = f"{PROVIDERS['fal_flux_schnell']['endpoint']}/requests/{quote(str(request_id), safe='')}/status"
+        result_url = f"{PROVIDERS['fal_flux_schnell']['endpoint']}/requests/{quote(str(request_id), safe='')}"
+        completed = False
+        for _ in range(60):
+            time.sleep(2)
+            status_req = urllib.request.Request(status_url, headers={"Authorization": f"Key {api_key}"})
+            with urllib.request.urlopen(status_req, timeout=15) as sr:
+                status_data = json.loads(sr.read())
+            if status_data.get("status") == "COMPLETED":
+                completed = True
+                break
+            if status_data.get("status") == "FAILED":
+                raise HTTPException(502, f"fal.ai Flux Schnell falhou: {status_data.get('error', 'unknown')}")
+        if not completed:
+            raise HTTPException(504, "Timeout aguardando fal.ai Flux Schnell (2 min).")
+        result_req = urllib.request.Request(result_url, headers={"Authorization": f"Key {api_key}"})
+        with urllib.request.urlopen(result_req, timeout=30) as rr:
+            result_data = json.loads(rr.read())
+        images = result_data.get("images", [])
+        if not images or not images[0].get("url"):
+            raise HTTPException(502, "fal.ai Flux Schnell nao retornou imagem.")
+        return _download_media_safe(images[0]["url"])
+    except HTTPException:
+        raise
+    except urllib.error.HTTPError as error:
+        error.close()
+        messages = {
+            400: "fal.ai recusou a requisicao. Verifique o prompt.",
+            401: "Chave fal.ai invalida. Confira em fal.ai/dashboard.",
+            402: "Creditos fal.ai esgotados.",
+            429: "Rate limit fal.ai atingido.",
+        }
+        raise HTTPException(502, messages.get(error.code, f"Erro fal.ai Flux Schnell: HTTP {error.code}")) from None
+    except (socket.timeout, TimeoutError, urllib.error.URLError):
+        raise HTTPException(504, "Timeout na comunicacao com fal.ai Flux Schnell.") from None
+    except (ValueError, TypeError, AttributeError, KeyError):
+        raise HTTPException(502, "A fal.ai Flux Schnell retornou uma resposta invalida.") from None
+
+
+# === Replicate Flux (Dev/Pro): geracao de imagem ===
+def _request_image_replicate(model_version, prompt, api_key):
+    payload = {
+        "version": model_version,
+        "input": {
+            "prompt": prompt,
+            "aspect_ratio": "1:1",
+            "output_format": "jpg",
+            "output_quality": 92,
+        },
+    }
+    request = urllib.request.Request(
+        "https://api.replicate.com/v1/predictions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "Prefer": "wait",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=180) as response:
+            result = json.loads(response.read())
+        output = result.get("output")
+        if isinstance(output, list) and output:
+            image_url = output[0]
+        elif isinstance(output, str):
+            image_url = output
+        else:
+            raise HTTPException(502, "Replicate nao retornou imagem.")
+        return _download_media_safe(image_url)
+    except HTTPException:
+        raise
+    except urllib.error.HTTPError as error:
+        error.close()
+        messages = {
+            400: "Replicate recusou a requisicao. Verifique o prompt.",
+            401: "Chave Replicate invalida. Confira em replicate.com/account/api-tokens.",
+            402: "Creditos Replicate esgotados.",
+            429: "Rate limit Replicate atingido.",
+        }
+        raise HTTPException(502, messages.get(error.code, f"Erro Replicate: HTTP {error.code}")) from None
+    except (socket.timeout, TimeoutError, urllib.error.URLError):
+        raise HTTPException(504, "Timeout na comunicacao com Replicate.") from None
+    except (ValueError, TypeError, AttributeError, KeyError):
+        raise HTTPException(502, "O Replicate retornou uma resposta invalida.") from None
+
+
+def request_image_replicate_flux_dev(prompt, api_key):
+    return _request_image_replicate("black-forest-labs/flux-dev", prompt, api_key)
+
+
+def request_image_replicate_flux_pro(prompt, api_key):
+    return _request_image_replicate("black-forest-labs/flux-1.1-pro", prompt, api_key)
+
+
+# === Download seguro de media (imagem) com validacao SSRF ===
+def _download_media_safe(url):
+    import ipaddress
+    parsed = urlsplit(url)
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+        raise HTTPException(502, "O provedor retornou um endereco de imagem invalido.")
+    try:
+        addresses = socket.getaddrinfo(parsed.hostname, parsed.port or 443)
+        if any(not ipaddress.ip_address(a[4][0]).is_global for a in addresses):
+            raise HTTPException(502, "O provedor retornou um endereco de imagem privado.")
+    except OSError:
+        raise HTTPException(502, "Nao foi possivel localizar a imagem do provedor.") from None
+
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            return None
+
+    with urllib.request.build_opener(NoRedirect()).open(url, timeout=60) as response:
+        data = response.read(MAX_RESPONSE_BYTES + 1)
+    if len(data) > MAX_RESPONSE_BYTES:
+        raise HTTPException(502, "A imagem excedeu o limite de download.")
+    return data
+
+
+# === DISPATCHER: escolhe o provedor certo para IMAGEM ===
+def request_image(provider, prompt, api_key):
+    dispatchers = {
+        "fal_flux_schnell": request_image_fal_flux_schnell,
+        "replicate_flux_dev": request_image_replicate_flux_dev,
+        "replicate_flux_pro": request_image_replicate_flux_pro,
+    }
+    fn = dispatchers.get(provider)
+    if not fn:
+        raise HTTPException(400, f"Provedor de imagem desconhecido: {provider}. Use: {', '.join(dispatchers.keys())}")
+    return fn(prompt, api_key)
+
+
 # === DISPATCHER: escolhe o provedor certo ===
 def request_video(provider, image_b64, prompt, aspect_ratio, api_key):
     dispatchers = {
@@ -364,8 +546,10 @@ def generate_product_video(
         raise HTTPException(400, "Escolha o formato vertical ou horizontal.")
     if provider not in PROVIDERS:
         raise HTTPException(400, f"Provedor invalido: {provider}. Opcoes: {', '.join(PROVIDERS.keys())}")
-    if not PROVIDERS[provider]["video_capable"]:
-        raise HTTPException(400, "Este provedor nao gera videos. Selecione deAPI, Google pago ou fal.ai.")
+    is_image_provider = PROVIDERS[provider].get("image_capable", False)
+    is_video_provider = PROVIDERS[provider].get("video_capable", False)
+    if not is_image_provider and not is_video_provider:
+        raise HTTPException(400, "Este provedor nao gera conteudo. Selecione um provedor valido.")
 
     # Resolver API key
     provider_info = PROVIDERS[provider]
@@ -389,20 +573,32 @@ def generate_product_video(
         raise HTTPException(409, "Ja existe uma geracao em andamento. Aguarde.")
 
     try:
-        prompt = (
-            f"Crie um video curto de apresentacao do produto {product_name}, usando a foto como primeiro quadro e referencia. "
-            "Preserve o formato, as cores, a embalagem, a marca e os detalhes reais do produto. "
-            "Nao invente propriedades, precos, ofertas ou resultados do produto. "
-            f"Direcao criativa: {scene}"
-        )
-        video = request_video(provider, image, prompt, aspect_ratio, key)
-        if not isinstance(video, bytes) or len(video) > MAX_RESPONSE_BYTES or len(video) < 12 or video[4:8] != b"ftyp":
-            raise HTTPException(502, "O provedor nao retornou um MP4 valido. Nenhum arquivo foi salvo.")
-        filename = f"cads_ai_produto_{secrets.token_hex(8)}.mp4"
+        if is_image_provider:
+            image_prompt = (
+                f"Crie uma imagem profissional do produto {product_name}. "
+                "Preserve o formato, as cores, a embalagem, a marca e os detalhes reais do produto. "
+                "Nao invente propriedades, precos, ofertas ou resultados do produto. "
+                f"Direcao criativa: {scene}"
+            )
+            media_data = request_image(provider, image_prompt, key)
+            if not isinstance(media_data, bytes) or len(media_data) > MAX_RESPONSE_BYTES or len(media_data) < 100:
+                raise HTTPException(502, "O provedor nao retornou uma imagem valida. Nenhum arquivo foi salvo.")
+            filename = f"cads_ai_produto_{secrets.token_hex(8)}.jpg"
+        else:
+            prompt = (
+                f"Crie um video curto de apresentacao do produto {product_name}, usando a foto como primeiro quadro e referencia. "
+                "Preserve o formato, as cores, a embalagem, a marca e os detalhes reais do produto. "
+                "Nao invente propriedades, precos, ofertas ou resultados do produto. "
+                f"Direcao criativa: {scene}"
+            )
+            media_data = request_video(provider, image, prompt, aspect_ratio, key)
+            if not isinstance(media_data, bytes) or len(media_data) > MAX_RESPONSE_BYTES or len(media_data) < 12 or media_data[4:8] != b"ftyp":
+                raise HTTPException(502, "O provedor nao retornou um MP4 valido. Nenhum arquivo foi salvo.")
+            filename = f"cads_ai_produto_{secrets.token_hex(8)}.mp4"
         path = customer_processed(PROCESSED_DIR) / filename
         try:
             with path.open("xb") as destination:
-                destination.write(video)
+                destination.write(media_data)
         except FileExistsError:
             raise HTTPException(500, "Nao foi possivel criar nome unico para o video.") from None
         except OSError:
@@ -415,6 +611,7 @@ def generate_product_video(
             "model": provider_info["model"],
             "provider": provider_info["name"],
             "cost": provider_info["cost"],
+            "media_type": "image" if is_image_provider else "video",
         }
     finally:
         GENERATION_LOCK.release()

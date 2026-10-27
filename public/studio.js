@@ -31,9 +31,12 @@ function updateProvider() {
   byId('scene').disabled = automatic;
   document.querySelectorAll('[data-scene]').forEach(button => { button.disabled = automatic; });
   byId('aspect-ratio').disabled = provider?.supports_aspect_ratio === false;
+  const isImageProvider = provider?.image_capable === true;
   byId('provider-hint').textContent = automatic
     ? 'fal.ai SVD anima a foto automaticamente. Não aceita direção por texto; o formato depende da imagem. Use Google ou deAPI para dirigir a cena e escolher o formato.'
-    : 'A foto e a descrição serão enviadas ao provedor selecionado. Consulte preços e saldo no painel dele antes de gerar.';
+    : isImageProvider
+      ? 'Gera uma imagem profissional do produto usando IA. Consulte preços e saldo no painel do provedor antes de gerar.'
+      : 'A foto e a descrição serão enviadas ao provedor selecionado. Consulte preços e saldo no painel dele antes de gerar.';
   byId('format-label').textContent = automatic ? 'Formato da foto' : byId('aspect-ratio').value;
   byId('quality').disabled = true;
   updateConnection();
@@ -136,20 +139,40 @@ form.addEventListener('submit', async event => {
   generateButton.textContent = 'Gerando sua cena…';
   byId('download').hidden = true;
   byId('status').className = 'status';
-  byId('status').replaceChildren(Object.assign(document.createElement('span'), {className: 'spinner'}), document.createTextNode(`O ${providerName} está gerando o vídeo. Isso pode levar alguns minutos. Mantenha esta página aberta.`));
+  byId('status').replaceChildren(Object.assign(document.createElement('span'), {className: 'spinner'}), document.createTextNode(`O ${providerName} está gerando seu conteudo. Isso pode levar alguns minutos. Mantenha esta página aberta.`));
   try {
     const response = await fetch('/api/studio/generate', {method: 'POST', body});
     const data = await response.json();
     if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Confira a foto e os campos preenchidos.');
-    if (!data.download_url?.startsWith('/api/download/cads_ai_produto_')) throw new Error('O servidor retornou um endereço de vídeo inválido.');
-    byId('result-video').src = data.download_url;
-    byId('result-video').hidden = false;
+    if (!data.download_url?.startsWith('/api/download/cads_ai_produto_')) throw new Error('O servidor retornou um endereço invalido.');
+    const isImage = data.media_type === 'image' || data.filename.endsWith('.jpg') || data.filename.endsWith('.png');
+    if (isImage) {
+      byId('result-video').hidden = true;
+      byId('result-video').pause();
+      byId('result-video').removeAttribute('src');
+      let resultImg = document.getElementById('result-image');
+      if (!resultImg) {
+        resultImg = document.createElement('img');
+        resultImg.id = 'result-image';
+        resultImg.className = 'result-media';
+        resultImg.style.maxWidth = '100%';
+        resultImg.style.borderRadius = '8px';
+        byId('result-video').parentNode.insertBefore(resultImg, byId('result-video'));
+      }
+      resultImg.src = data.download_url;
+      resultImg.hidden = false;
+    } else {
+      const resultImg = document.getElementById('result-image');
+      if (resultImg) resultImg.hidden = true;
+      byId('result-video').src = data.download_url;
+      byId('result-video').hidden = false;
+    }
     byId('stage-image').hidden = true;
     byId('placeholder').hidden = true;
     byId('download').href = data.download_url;
     byId('download').download = data.filename;
     byId('download').hidden = false;
-    byId('stage-label').textContent = 'Vídeo gerado com IA';
+    byId('stage-label').textContent = isImage ? 'Imagem gerada com IA' : 'Vídeo gerado com IA';
     window.sfRefreshNotifications?.().catch(() => {});
     setStatus('Seu vídeo está pronto e salvo na sua conta StealthForge. Confira os detalhes antes de publicar.', 'success');
     if (window.parent !== window) window.parent.postMessage({type: 'cads-studio-generated'}, location.origin);
@@ -158,7 +181,7 @@ form.addEventListener('submit', async event => {
   } finally {
     busy = false;
     controls.forEach(control => { control.disabled = false; });
-    generateButton.textContent = '✦ Gerar vídeo com IA';
+    generateButton.textContent = '✦ Gerar com IA';
     updateProvider();
   }
 });
@@ -171,7 +194,7 @@ fetch('/api/studio/config').then(response => {
   const select = byId('provider');
   select.replaceChildren();
   for (const [id, provider] of Object.entries(providers)) {
-    if (provider.video_capable) select.add(new Option(provider.name, id));
+    select.add(new Option(provider.name + (provider.image_capable ? ' [Imagem]' : provider.video_capable ? ' [Video]' : ''), id));
   }
   select.value = config.default;
   configReady = true;
