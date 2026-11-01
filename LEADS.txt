@@ -1,0 +1,127 @@
+DASHBOARD DE LEADS — FASTAPI / STEALTHFORGE
+
+Integração local
+
+O dashboard foi integrado à aplicação existente. O registro das cinco rotas
+fica em server/main.py, antes do mount de arquivos estáticos. A página está
+protegida pelo middleware de contas, com a mesma sessão por cookie já usada
+no portal. O módulo não cria nem substitui autenticação ou tokens.
+
+Arquivos principais
+
+server/routers/leads.py
+server/services/intent_service.py
+server/utils/csv_parser.py
+server/schemas/leads.py
+public/leads.html
+public/leads.js
+public/portal.css
+tests/test_leads.py
+
+Os diretórios de backend ficam dentro de server/, seguindo a organização do
+projeto. Python reconhece esses diretórios como namespace packages; não é
+necessário criar arquivos __init__.py vazios.
+
+Persistência e acesso
+
+A tabela intent_leads é criada automaticamente no SQLite de contas existente.
+Toda consulta ou alteração filtra customer_id no servidor, inclusive favoritos
+e métricas. O arquivo de dados fica fora da pasta pública. Reimportações usam
+e-mail como chave dentro da conta e preservam ID, data de criação e favorito.
+Não são criados arquivos JSON de leads nem um segundo serviço web.
+
+Todas as rotas exigem conta aprovada e X-LGPD-Consent: true. O header sozinho
+não autentica ninguém. A página não consulta leads antes da aceitação. Recusar
+limpa a interface e cancela consultas pendentes; a recusa não desfaz gravações
+já recebidas pelo servidor e não elimina dados existentes.
+
+Se uma fonte enviar opt_out=true/optOut=true, ou a coluna optout=true no CSV,
+o registro não aparece e permanece bloqueado em novas importações nessa conta.
+Isso não equivale a um cadastro global de exclusões entre empresas distintas.
+
+API
+
+GET /api/leads?industry=SaaS&min_score=70&source=clay
+  Retorna {leads: [...]}; filtros são opcionais e combinados por AND.
+
+GET /api/leads/stats
+  Retorna {total, by_stage: {Awareness, Consideration, Decision}, avg_score}.
+
+POST /api/leads/import
+  multipart/form-data, campo file; limite de 5 MB.
+  Retorna {success: [...], errors: [mensagens por linha]}.
+  Linhas válidas são importadas; arquivo sem linhas válidas retorna 422.
+
+POST /api/leads/sync
+  Consulta a fonte configurada e retorna {imported: quantidade}.
+
+PATCH /api/leads/{id}/favorite
+  Alterna is_favorite atomicamente e retorna o lead atualizado.
+  Outro proprietário ou registro excluído retorna 404.
+  Não repita automaticamente o toggle após falha de conexão: o servidor pode
+  já ter aplicado a alteração. O próximo carregamento recupera o estado real.
+
+CSV
+
+parse_phantom_csv(file_content: bytes) retorna (list[Lead], list[str]).
+Usa csv nativo, tenta UTF-8/BOM e, se inválido, Latin1. Detecção entre esses
+encodings é heurística; Latin1 que também forma UTF-8 válido é ambíguo.
+Aceita vírgula, ponto-e-vírgula e tab, aspas escapadas e campos multilinha.
+
+Colunas mínimas: name,email,company. Reconhece fullName, emailAddress,
+companyName, jobTitle, firstName+lastName e alguns nomes em português.
+Opcionais: role, industry, companySize/company_size, location, revenue,
+technographics, score, signals, stage, lastActivity/last_activity, source,
+createdAt/created_at e optout. Listas no CSV usam | (exemplo: Node.js|AWS).
+Cada exportação do PhantomBuster pode ter cabeçalhos próprios: ajuste aliases
+no parser se a exportação real usar nomes não contemplados.
+
+Sem sinais reais: score=0, stage=Awareness, signals=[] e last_activity=null.
+A data de atividade é opcional para não inventar uma visita durante importação.
+Campos de perfil desconhecidos ficam vazios. Datas sem fuso são tratadas como UTC.
+O JSON público usa snake_case, inclusive is_favorite e company_size.
+
+EmailStr exigiria email-validator, ausente do projeto. Em vez de instalar outro
+pacote, o schema aplica um validador Pydantic com a mesma regra de e-mail das
+contas existentes. Não executa consulta DNS nem valida a existência da caixa.
+
+Fonte externa
+
+Configure EXTERNAL_API_URL e EXTERNAL_API_KEY no ambiente privado do servidor.
+URL deve ser HTTPS; requisição GET com Authorization: Bearer.
+O retorno esperado é um array de leads ou {"leads": [...]}, de até 5 MB e
+10 mil itens. Campos seguem o schema; aliases camelCase principais são aceitos.
+Configure o fornecedor para esse contrato ou adapte intent_service.py ao
+contrato real. Nenhuma URL de API oficial ou chave foi inventada.
+
+Cache de uma hora, até três tentativas, backoff de 0,25 e 0,5 segundos, timeout
+de 15 segundos, redirecionamentos desabilitados e teto de 100 chamadas/hora.
+Cache e limite são por processo. A instalação atual usa um worker.
+A fonte definida pelas variáveis é compartilhada: cada conta que sincroniza
+recebe esse conjunto autorizado. Não há credenciais de provedor por cliente;
+se a operação exigir fontes distintas por conta, vincule a consulta a elas.
+
+httpx==0.28.1 já existia nas dependências de desenvolvimento; foi movido para
+requirements.txt porque a sincronização também precisa dele em execução.
+Nenhuma biblioteca foi adicionada ao frontend. Não há backend Node/Express.
+
+Verificação e estado
+
+Na raiz do projeto:
+  python -m unittest discover -s tests -p test_leads.py -v
+  python -m unittest discover -s tests -p "test_*.py" -v
+
+Resultado: nove testes novos e 69 testes Python no total aprovados.
+Também foi testado em Chromium, conectado ao FastAPI com sessão real de teste:
+multipart, filtros, favoritos, métricas, sincronização simulada, recusa
+persistida e retirada do consentimento durante consulta. Layouts em 390, 768
+e 1366 pixels, sem rolagem horizontal ou erros de JavaScript. Dados fictícios.
+
+O ambiente emite avisos de depreciação já existentes de Starlette/httpx e Pillow;
+os testes passaram. Não foi instalada uma nova biblioteca para suprimir avisos.
+
+A mudança está no checkout local; não foi enviada ao GitHub nem publicada.
+O provedor externo real não foi testado, pois faltam endpoint/credenciais.
+O projeto não tem privacy.html. O banner não aponta para uma página inexistente.
+Política de privacidade e bases legais precisam refletir a operação real;
+o header e o banner não constituem certificação LGPD/GDPR.
